@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BDD100K validation, pilot, and full-stage spec",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["task_name", "stage", "mode", "run_root", "hydra_overrides"],
+  "properties": {
+    "task_name": {"type": "string", "pattern": "^DDM4IP-BDD100K-[A-Za-z0-9_-]+$"},
+    "stage": {"enum": ["step1", "step2", "step3"]},
+    "mode": {"enum": ["validation", "pilot", "full"]},
+    "run_root": {"type": "string", "description": "New descendant of D:\\DDM4IP-runtime\\experiments; no reparse point or traversal."},
+    "hydra_overrides": {"type": "array", "items": {"type": "string"}},
+    "execution_timeout_minutes": {"type": "integer", "minimum": 1, "maximum": 4320},
+    "expected_final_global_step": {"type": "integer", "minimum": 1},
+    "expected_manifest_records": {"type": "integer", "minimum": 1},
+    "predecessor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "training_state_path", "training_state_sha256", "network_snapshot_path", "network_snapshot_sha256", "final_global_step"],
+      "properties": {
+        "stage": {"enum": ["step1", "step2"]},
+        "training_state_path": {"type": "string"},
+        "training_state_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "network_snapshot_path": {"type": "string"},
+        "network_snapshot_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "final_global_step": {"type": "integer", "minimum": 1}
+      }
+    },
+    "expected_artifacts": {"const": ["fixture.ok"]},
+    "validation_case": {"enum": ["success", "native-failure", "missing-artifact"]},
+    "delay_seconds": {"type": "integer", "minimum": 0, "maximum": 120}
+  }
+}

@@ -1,0 +1,42 @@
+﻿[
+    {
+        "path":  "bdd100k_runner.py",
+        "bytes":  21044,
+        "sha256":  "cf556f72fbfca5316d9e49048e2a0136700136659ac8f2f86c03b9c45bc81a68"
+    },
+    {
+        "path":  "runner_fixture.py",
+        "bytes":  981,
+        "sha256":  "9a3251a3460c4c2ed26c43fedb5e22a9e71e6af0b0acf3da7313c3ea355634f4"
+    },
+    {
+        "path":  "run_bdd100k_stage.ps1",
+        "bytes":  904,
+        "sha256":  "426d2653918d7325804e3dd555ced1d376d42b3bbf29c3342dd06e3cbcef7cc0"
+    },
+    {
+        "path":  "run_bdd100k_synthetic_stage.ps1",
+        "bytes":  1380,
+        "sha256":  "6e9dc30a6176001dc58ed3e94eb7957dad63b66fb61969ea464198ccb6ff42cb"
+    },
+    {
+        "path":  "start_bdd100k_synthetic_task.ps1",
+        "bytes":  1859,
+        "sha256":  "dda9faa08dcc6c0396d1ac9852db197e2fa09deb4e037de24ac81925645d560a"
+    },
+    {
+        "path":  "start_bdd100k_task.ps1",
+        "bytes":  2775,
+        "sha256":  "2968359f09d46f05268dde7b8ab327b310386b79fcdc60355e6e3ea7293cabe8"
+    },
+    {
+        "path":  "step-spec.schema.json",
+        "bytes":  1754,
+        "sha256":  "2b542cabd4fcac22de8dba9bbe361d013db423253c5d39c31fd6a4ca0723082c"
+    },
+    {
+        "path":  "synthetic-step-spec.schema.json",
+        "bytes":  2502,
+        "sha256":  "4712125719dbe2bfe255d420c7c275bbf93a6c7daf7c627a073c0e096e8682c8"
+    }
+]

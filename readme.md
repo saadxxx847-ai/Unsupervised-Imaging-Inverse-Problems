@@ -1,5 +1,8 @@
 # DDM4IP
 
+This repository includes a BDD100K reproduction project based on the original DDM4IP code. See [project publication notes](PUBLICATION.md) for the approved designs, current stage boundaries, Windows runtime requirements, and excluded data/checkpoints. The upstream history, license, and original project description are preserved below.
+
+
 [Arxiv version of the article](https://arxiv.org/abs/2506.14605)
 
 This repository implement the code for the article: **Unsupervised Imaging Inverse Problems with Diffusion Distribution Matching**.

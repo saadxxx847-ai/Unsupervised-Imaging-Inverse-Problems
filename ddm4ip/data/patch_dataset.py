@@ -68,6 +68,14 @@ class PatchDataset(torch.utils.data.Dataset[Batch], DatasetType):
         self.patch_size = dset_cfg["patch_size"]
         self.x_flip = dset_cfg.get("x_flip", False) and self.split == Datasplit.TRAIN
         self.get_all_test_patches = dset_cfg.get("full_test", False)
+        self.full_image = dset_cfg.get("full_image", False)
+        if self.full_image and (
+            self.split != Datasplit.TEST or self.get_all_test_patches
+            or dset_cfg.get("inflate_patches", 0)
+            or dset_cfg.get("random_space_conditioning", False)
+            or dset_cfg.get("random_replace_locmap", 0)
+        ):
+            raise ValueError("full_image requires deterministic TEST data, full_test=false and inflate_patches=0")
 
         self.space_conditioning = dset_cfg.get("space_conditioning", False)
         self.random_space_conditioning = dset_cfg.get("random_space_conditioning", False)
@@ -83,6 +91,7 @@ class PatchDataset(torch.utils.data.Dataset[Batch], DatasetType):
         self.use_cuda = dset_cfg.get("cuda", False)
         self.need_clean: bool = dset_cfg.get("need_clean", True)
         self.need_noisy: bool = dset_cfg.get("need_noisy", True)
+        self.noise_level_override = dset_cfg.get("noise_level_override", None)
         assert self.need_clean or self.need_noisy
 
         self.init_full_datasets(dset_cfg, generator)
@@ -97,12 +106,16 @@ class PatchDataset(torch.utils.data.Dataset[Batch], DatasetType):
         else:
             self.patch_cache_size = -1  # don't use zero to avoid risking divideByZero
             if self.get_all_test_patches:
-                self.all_num_patches = [self.get_num_patches(full_img) for full_img, _ in self.clean_full_data]
+                source_data = self.clean_full_data if self.need_clean else self.noisy_full_data
+                assert source_data is not None
+                self.all_num_patches = [self.get_num_patches(full_img) for full_img, _ in source_data]
                 self.dset_length = sum(self.all_num_patches)
                 self.num_patches_per_image = -1  # This is never used
             else:
                 # Center-crop of each image
-                self.dset_length = len(self.clean_full_data)
+                source_data = self.clean_full_data if self.need_clean else self.noisy_full_data
+                assert source_data is not None
+                self.dset_length = len(source_data)
                 self.num_patches_per_image = 1
 
         if self.use_cuda:
@@ -112,16 +125,31 @@ class PatchDataset(torch.utils.data.Dataset[Batch], DatasetType):
         if self.corruption is not None:
             self.corruption = self.corruption.to(self.device)
 
-        # Run the pipeline once to get a sample
-        clean_patches, noisy_patches = self.get_next_patches(idx=0, num_patches=1, get_clean=True, get_noisy=True)
-        assert clean_patches is not None and noisy_patches is not None
-        # Record sample shapes
-        noisy_cond, noisy_patch = self.get_conditioning(noisy_patches[0])
-        self.corrupt_img_size = (noisy_patch.shape[-3], noisy_patch.shape[-2], noisy_patch.shape[-1])
-        self.corrupt_conditioning_channels = noisy_cond.shape[-3] if noisy_cond is not None else 0
-        clean_cond, clean_patch = self.get_conditioning(clean_patches[0])
-        self.clean_img_size = (clean_patch.shape[-3], clean_patch.shape[-2], clean_patch.shape[-1])
-        self.clean_conditioning_channels = clean_cond.shape[-3] if clean_cond is not None else 0
+        # Run the pipeline once to get a sample.
+        clean_patches, noisy_patches = self.get_next_patches(
+            idx=0,
+            num_patches=1,
+            get_clean=self.need_clean,
+            get_noisy=self.need_noisy,
+        )
+        assert clean_patches is not None or noisy_patches is not None
+        # Record sample shapes.
+        if noisy_patches is not None:
+            corrupt_cond, corrupt_patch = self.get_conditioning(noisy_patches[0])
+            self.corrupt_img_size = (corrupt_patch.shape[-3], corrupt_patch.shape[-2], corrupt_patch.shape[-1])
+            self.corrupt_conditioning_channels = corrupt_cond.shape[-3] if corrupt_cond is not None else 0
+        else:
+            assert clean_patches is not None
+            clean_cond, clean_patch = self.get_conditioning(clean_patches[0])
+            self.corrupt_img_size = (clean_patch.shape[-3], clean_patch.shape[-2], clean_patch.shape[-1])
+            self.corrupt_conditioning_channels = clean_cond.shape[-3] if clean_cond is not None else 0
+        if clean_patches is not None:
+            clean_cond, clean_patch = self.get_conditioning(clean_patches[0])
+            self.clean_img_size = (clean_patch.shape[-3], clean_patch.shape[-2], clean_patch.shape[-1])
+            self.clean_conditioning_channels = clean_cond.shape[-3] if clean_cond is not None else 0
+        else:
+            self.clean_img_size = self.corrupt_img_size
+            self.clean_conditioning_channels = self.corrupt_conditioning_channels
         self.label_dim = 0
         distributed.print0(f"Loaded PatchDataset dataset at '{path}':")
         if self.clean_full_data != self.noisy_full_data:
@@ -134,7 +162,9 @@ class PatchDataset(torch.utils.data.Dataset[Batch], DatasetType):
         distributed.print0(f"Noisy conditioning channels:    {self.corrupt_conditioning_channels}")
         distributed.print0(f"Space conditioning:             {'normal' if self.space_conditioning else 'random' if self.random_space_conditioning else 'none'}")
         distributed.print0(f"Random replace conditioning p:  {self.random_replace_locmap}")
-        distributed.print0(f"Number of base images:          {len(self.clean_full_data)}")
+        source_data = self.clean_full_data if self.need_clean else self.noisy_full_data
+        assert source_data is not None
+        distributed.print0(f"Number of base images:          {len(source_data)}")
         if self.split == Datasplit.TEST:
             distributed.print0(f"Full test patches:              {self.get_all_test_patches}")
             distributed.print0(f"Dataset length:                 {self.dset_length}")
@@ -151,42 +181,52 @@ class PatchDataset(torch.utils.data.Dataset[Batch], DatasetType):
         if self.space_conditioning:
             full_img_trsf.append(AddLocMapTransform())
         clean_filter = cfg.get("clean_filter", None)
-        self.clean_full_data = BaseImageFolderDataset(
-            path=self.clean_path,
-            cache=False,
-            use_labels=False,
-            img_transform=v2.Compose(full_img_trsf),
-            max_imgs=None,
-            filter=clean_filter
-        )
-        noisy_filter = cfg.get("noisy_filter", None)
-        needs_separate_noisy = (
-            (self.noisy_path is not None and self.noisy_path != self.clean_path)
-            or (noisy_filter is not None and noisy_filter != clean_filter)
-        )
-        if needs_separate_noisy:
-            self.noisy_full_data = BaseImageFolderDataset(
-                path=self.noisy_path or self.clean_path,
+        if self.need_clean:
+            self.clean_full_data = BaseImageFolderDataset(
+                path=self.clean_path,
                 cache=False,
                 use_labels=False,
                 img_transform=v2.Compose(full_img_trsf),
                 max_imgs=None,
-                filter=noisy_filter
+                filter=clean_filter
             )
         else:
-            self.noisy_full_data = self.clean_full_data
-        if len(self.clean_full_data) != len(self.noisy_full_data):
+            self.clean_full_data = None
+        noisy_filter = cfg.get("noisy_filter", None)
+        if self.need_noisy:
+            needs_separate_noisy = (
+                (self.noisy_path is not None and self.noisy_path != self.clean_path)
+                or (noisy_filter is not None and noisy_filter != clean_filter)
+            )
+            if needs_separate_noisy or not self.need_clean:
+                self.noisy_full_data = BaseImageFolderDataset(
+                    path=self.noisy_path or self.clean_path,
+                    cache=False,
+                    use_labels=False,
+                    img_transform=v2.Compose(full_img_trsf),
+                    max_imgs=None,
+                    filter=noisy_filter
+                )
+            else:
+                self.noisy_full_data = self.clean_full_data
+        else:
+            self.noisy_full_data = None
+        if self.need_clean and self.need_noisy and len(self.clean_full_data) != len(self.noisy_full_data):
             raise ValueError(
                 f"Clean and noisy datasets must have same length but found "
                 f"{len(self.clean_full_data)} and {len(self.noisy_full_data)}"
             )
         # single `full_idx` since clean and noisy datasets are of equal length
         self.full_idx = 0
-        self.noisy_full_ids = torch.arange(len(self.noisy_full_data))
-        if self.shuffle_clean:
+        self.noisy_full_ids = (
+            torch.arange(len(self.noisy_full_data)) if self.noisy_full_data is not None else None
+        )
+        if self.clean_full_data is not None and self.shuffle_clean:
             self.clean_full_ids = torch.randperm(len(self.clean_full_data), generator=rnd_gen)
-        else:
+        elif self.clean_full_data is not None:
             self.clean_full_ids = torch.arange(len(self.clean_full_data))
+        else:
+            self.clean_full_ids = None
 
     def get_num_patches(self, img: torch.Tensor):
         act_patch_size = inflate_patch_size(self.patch_size, self.inflate_patches)
@@ -226,7 +266,9 @@ class PatchDataset(torch.utils.data.Dataset[Batch], DatasetType):
                     self.random_replace_locmap, full_img_size
                 ))
         else:
-            if self.get_all_test_patches:
+            if self.full_image:
+                pass  # Preserve the original rectangular field of view.
+            elif self.get_all_test_patches:
                 img_transform.append(GetAllPatchesTransform(act_patch_size, stride=self.patch_size))
             else:
                 img_transform.append(v2.CenterCrop(act_patch_size))
@@ -316,8 +358,10 @@ class PatchDataset(torch.utils.data.Dataset[Batch], DatasetType):
                     self.patch_cache[missing_ids[i + j]] = (cp, np)
                 except IndexError:
                     break
-            # increment full_idx to fetch next full image. clean and noisy full data have same length.
-            self.full_idx = (self.full_idx + 1) % len(self.clean_full_data)
+            # Increment full_idx over whichever source side is active.
+            source_data = self.clean_full_data if self.need_clean else self.noisy_full_data
+            assert source_data is not None
+            self.full_idx = (self.full_idx + 1) % len(source_data)
 
     def get_conditioning(self, img: OPT_TEN_TYPE) -> Tuple[torch.Tensor | None, OPT_TEN_TYPE]:
         cond = []
@@ -370,7 +414,26 @@ class PatchDataset(torch.utils.data.Dataset[Batch], DatasetType):
         noisy_cond, noisy_patch = self.get_conditioning(noisy_patch) # type: ignore
         if clean_cond is not None:
             clean_cond = crop_valid(clean_cond, self.inflate_patches)
+        meta = {}
+        if self.full_image:
+            source_data = self.noisy_full_data if self.need_noisy else self.clean_full_data
+            source_ids = self.noisy_full_ids if self.need_noisy else self.clean_full_ids
+            source_index = int(source_ids[full_img_idx])
+            source = source_data.img_files[int(source_data.raw_idx[source_index])]
+            image = noisy_patch if noisy_patch is not None else clean_patch
+            height, width = image.shape[-2:]
+            meta = {
+                "source_root": str(source_data.path),
+                "source_path": source.name.replace("\\", "/"),
+                "sample_index": int(idx),
+                "input_size": torch.tensor([height, width]),
+                "mode": "full_image",
+                "tile_index": 0,
+                # Half-open [top, left, bottom, right] in source pixels.
+                "tile_coordinates": torch.tensor([0, 0, height, width]),
+            }
         return Batch(
+            meta=meta,
             clean=clean_patch,
             corrupt=noisy_patch,
             clean_label=None,
@@ -385,6 +448,8 @@ class PatchDataset(torch.utils.data.Dataset[Batch], DatasetType):
 
     @property
     def noise_level(self) -> torch.Tensor:
+        if self.noise_level_override is not None:
+            return torch.tensor(self.noise_level_override)
         if self.corruption is None:
             return torch.tensor(0.0)
         try:

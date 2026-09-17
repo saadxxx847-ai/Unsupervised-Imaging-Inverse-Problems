@@ -262,7 +262,7 @@ class Kernel(object):
         self.painter = ImageDraw.Draw(self.kernel_image)
 
         # draw the path
-        self.painter.line(xy=self.path, width=int(self.DIAGONAL / 150))
+        self.painter.line(xy=self.path, width=max(1, int(self.DIAGONAL / 150)))
 
         # applying gaussian blur for realism
         self.kernel_image = self.kernel_image.filter(

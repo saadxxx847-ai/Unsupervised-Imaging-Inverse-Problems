@@ -1,0 +1,18 @@
+defaults:
+  - degradation: no_degradation
+  - noise: no_noise
+
+name: patch
+path: ${paths.data}/step1-observation/noisy
+x_flip: false
+patch_size: 256
+inflate_patches: 0
+num_patches_per_image: 64
+patch_cache_size: 1024
+space_conditioning: false
+random_space_conditioning: false
+random_replace_locmap: 0
+full_test: false
+cuda: false
+need_clean: false
+need_noisy: true

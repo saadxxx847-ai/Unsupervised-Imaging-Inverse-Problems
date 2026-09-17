@@ -297,8 +297,8 @@ class BaseTrainer(AbstractTrainer, abc.ABC):
         return tr_loader_iter
 
 
-    def maybe_save_checkpoint(self):
-        if self.should_save_at_step(self.global_step):
+    def maybe_save_checkpoint(self, force: bool = False):
+        if force or self.should_save_at_step(self.global_step):
             if get_rank() == 0:
                 assert self.ckpt_dir is not None
                 save_file_name = os.path.join(self.ckpt_dir, f"training-state-{self.global_step}.pt")
@@ -528,6 +528,8 @@ class BaseTrainer(AbstractTrainer, abc.ABC):
             self.on_train_step_finished()
 
             if self.global_step >= self.max_steps:
+                with save_timer.measure():
+                    self.maybe_save_checkpoint(force=True)
                 print0(f"Training finished at step {self.global_step}")
                 break
 

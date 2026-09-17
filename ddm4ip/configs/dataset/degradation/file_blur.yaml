@@ -1,0 +1,4 @@
+kind: file_blur
+kernel_path: ${paths.data}/degradation/kernel-gt.pt
+kernel_size: null
+padding: replicate

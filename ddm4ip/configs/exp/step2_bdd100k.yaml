@@ -1,0 +1,54 @@
+# @package _global_
+
+defaults:
+ - /models@models.pretrained_flow: xxxs_flow_64
+ - /models@models.kernel: direct_centerpixel
+ - /dataset@dataset.train: bdd100k_unpaired
+ - /dataset@dataset.test: bdd100k_unpaired
+ - /loss@loss.aux: flow_matching
+ - override /training: default
+ - override /generation: flow
+
+models:
+  pretrained_flow:
+    path: null  # injected only after independent Step 1 verification
+  kernel:
+    learn_output_noise: true
+    kernel_size: 13
+    kernel_ch: 3
+    num_psfs: [8, 8]
+    initialization: random
+    padding: valid
+    sum_to_one: true
+
+dataset:
+  train:
+    noisy_path: D:/DDM4IP-runtime/group-data-views/BDD100K_Blur_Sharp/train/noisy
+  test:
+    noisy_path: D:/DDM4IP-runtime/group-data-views/BDD100K_Blur_Sharp/val/noisy
+
+optim:
+  aux:
+    lr: 0.00001
+  kernel:
+    lr: 0.00004
+
+loss:
+  name: di
+  center_reg: 0.01
+  sparse_reg: 0.01
+  gaussian_reg: 0.1
+  n_inner_steps: 1
+  n_accum_steps: 1
+
+training:
+  batch_size: 128
+  num_workers: 0
+  max_val_batches: 0
+  max_steps: ${parse_nimg:"8Mi"}
+  report_every_steps: ${parse_nimg:"16Ki"}
+  plot_every_steps: ${parse_nimg:"128Ki"}
+  save_every_steps: ${parse_nimg:"1Mi"}
+  save_eval_to_file: false
+
+exp_name: bdd100k_step2

@@ -1,0 +1,20 @@
+defaults:
+ - degradation: no_degradation
+ - noise: no_noise
+
+name: patch
+x_flip: false
+patch_size: 64
+inflate_patches: 0
+num_patches_per_image: 64
+patch_cache_size: 1024
+space_conditioning: false
+random_space_conditioning: false
+random_replace_locmap: 0
+full_test: false
+cuda: false
+need_clean: false
+need_noisy: true
+
+train_path: D:/DDM4IP-runtime/group-data-views/BDD100K_Blur_Sharp/train/noisy
+test_path: D:/DDM4IP-runtime/group-data-views/BDD100K_Blur_Sharp/val/noisy

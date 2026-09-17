@@ -10,7 +10,8 @@ from ddm4ip.degradations.downsampling import Downsampling
 from ddm4ip.degradations.varpsf import PerPatchInterpolatedBlur, PerPixelBlur
 from ddm4ip.losses.base import AbstractLoss
 from ddm4ip.psf.psf import norm_sum_to_one
-from ddm4ip.utils.metrics import LPIPS, calc_psnr, calc_ssim
+from ddm4ip.utils.benchmark_metrics import compute_image_metrics
+from ddm4ip.utils.metrics import LPIPS
 from ddm4ip.utils.torch_utils import img2patches, patches2img
 
 
@@ -34,6 +35,7 @@ class DeepInvLoss(AbstractLoss):
     def run_model(self, batch: Batch) -> tuple[torch.Tensor, torch.Tensor]:
         assert batch.corrupt is not None
 
+        self.output_geometry = {}
         data_resolution = batch.corrupt.shape[-2], batch.corrupt.shape[-1]
         if self.patch_size is not None and (self.patch_size != data_resolution[0] or self.patch_size != data_resolution[1]):
             # Input is in full resolution,
@@ -48,6 +50,12 @@ class DeepInvLoss(AbstractLoss):
                 img_and_cond = torch.cat([batch.corrupt, batch.corrupt_conditioning], dim=-3)
             else:
                 img_and_cond = batch.corrupt
+            # img2patches requires both axes >= stride. Extend only the bottom/right
+            # for small inputs, then remove that extension after reconstruction.
+            work_h, work_w = max(image_h, self.patch_size), max(image_w, self.patch_size)
+            img_and_cond = torch.nn.functional.pad(
+                img_and_cond, (0, work_w - image_w, 0, work_h - image_h), mode="replicate"
+            )
             patches = img2patches(img_and_cond, patch_size=self.patch_size + self.padding, stride=self.patch_size)
             restored_patches, corruption_filters = self.run_on_iterable(patches, image_c)
             restored_patches = [p.squeeze(0) for p in restored_patches]
@@ -57,11 +65,25 @@ class DeepInvLoss(AbstractLoss):
             restored_image = patches2img(
                 restored_patches,
                 stride=int(self.patch_size * patch_size_mult),
-                imgh=int(image_h * patch_size_mult),
-                imgw=int(image_w * patch_size_mult),
+                imgh=int(work_h * patch_size_mult),
+                imgw=int(work_w * patch_size_mult),
                 func=_crop
             )
+            restored_image = restored_image[..., :int(image_h * patch_size_mult), :int(image_w * patch_size_mult)]
             restored_image = restored_image.unsqueeze(0)  # add back the batch dimension
+            ys = list(range(0, work_h - self.patch_size, self.patch_size)) + [work_h - self.patch_size]
+            xs = list(range(0, work_w - self.patch_size, self.patch_size)) + [work_w - self.patch_size]
+            self.output_geometry = {
+                "tiles": [[y, x, min(y + self.patch_size, image_h), min(x + self.patch_size, image_w)]
+                          for y in ys for x in xs],
+                "coordinate_convention": "half-open top,left,bottom,right; input pixels",
+                "padding": self.padding,
+                "padding_mode": "replicate",
+                "small_image_extension": [work_h - image_h, work_w - image_w],
+                "output_scale": patch_size_mult,
+                "overlap_policy": "row-major last tile wins",
+                "filter_groups": self._filter_groups,
+            }
         else:
             restored_image, corruption_filters = self.run_on_data(
                 y=batch.corrupt.cuda(),
@@ -70,6 +92,17 @@ class DeepInvLoss(AbstractLoss):
             )
             restored_image = restored_image.cpu()
             corruption_filters = corruption_filters.cpu()
+            count = batch.corrupt.shape[0]
+            self.output_geometry = {
+                "tiles": [[0, 0, *data_resolution] for _ in range(count)],
+                "coordinate_convention": "half-open top,left,bottom,right; input pixels",
+                "padding": 0,
+                "output_scale": restored_image.shape[-1] / data_resolution[1],
+                "filter_groups": [{
+                    "tile_range": [0, count], "filter_range": [0, len(corruption_filters)],
+                    "association": "shared" if len(corruption_filters) == 1 else "per_tile",
+                }],
+            }
         # Update physics based on conditioning.
         return restored_image, corruption_filters
 
@@ -77,6 +110,17 @@ class DeepInvLoss(AbstractLoss):
         out_patches: list[torch.Tensor] = []
         out_filters = []
         sub_batch = []
+        self._filter_groups = []
+        def record_filters(filters, count):
+            start_tile = sum(g["tile_range"][1] - g["tile_range"][0] for g in self._filter_groups)
+            start_filter = sum(g["filter_range"][1] - g["filter_range"][0] for g in self._filter_groups)
+            if len(filters) not in (1, count):
+                raise ValueError("Cannot associate solver filters with input tiles")
+            self._filter_groups.append({
+                "tile_range": [start_tile, start_tile + count],
+                "filter_range": [start_filter, start_filter + len(filters)],
+                "association": "shared" if len(filters) == 1 else "per_tile",
+            })
         for patch in y_and_cond:
             sub_batch.append((patch[..., :y_channels, :, :], patch[..., y_channels:, :, :]))
             if len(sub_batch) >= self.patch_batch_size:
@@ -86,6 +130,7 @@ class DeepInvLoss(AbstractLoss):
                     cond_stack = None
                 restored, filters = self.run_on_data(y_stack, x=None, conditioning=cond_stack)
                 out_patches.extend(restored.cpu().split(1, dim=0))
+                record_filters(filters, len(sub_batch))
                 out_filters.append(filters.cpu())
                 sub_batch = []
         if len(sub_batch) > 0:
@@ -95,6 +140,7 @@ class DeepInvLoss(AbstractLoss):
                 cond_stack = None
             restored, filters = self.run_on_data(y_stack, x=None, conditioning=cond_stack)
             out_patches.extend(restored.cpu().split(1, dim=0))
+            record_filters(filters, len(sub_batch))
             out_filters.append(filters.cpu())
 
         # out_patches = torch.cat(out_patches, 0)  # N, C, pS, pS
@@ -119,13 +165,35 @@ class DeepInvLoss(AbstractLoss):
         return x_net, filters
 
     def compute_img_metrics(self, x_recon: torch.Tensor, x_gt: torch.Tensor):
-        metrics = {
-            "lpips": self.lpips(x_gt.cuda(), x_recon.cuda()),
-            "psnr": calc_psnr(x_gt, x_recon),
-            "ssim": calc_ssim(x_gt, x_recon),
-        }
-        return metrics
+        if x_recon.ndim == 4:
+            if x_recon.shape[0] != x_gt.shape[0]:
+                raise ValueError("ground truth and reconstruction batch sizes differ")
+            per_image = [
+                compute_image_metrics(x_gt[index], x_recon[index], self.lpips)
+                for index in range(x_recon.shape[0])
+            ]
+            return {
+                key: sum(item[key] for item in per_image) / len(per_image)
+                for key in per_image[0]
+            }
+        return compute_image_metrics(x_gt, x_recon, self.lpips)
 
+    def reprojection_metrics(self, x_recon: torch.Tensor, y_obs: torch.Tensor) -> dict[str, torch.Tensor]:
+        physics_device = getattr(self.physics, "device", None)
+        if physics_device is None:
+            try:
+                physics_device = next(self.physics.parameters()).device
+            except StopIteration:
+                try:
+                    physics_device = next(self.physics.buffers()).device
+                except StopIteration:
+                    physics_device = x_recon.device
+        y_reprojected = self.physics.A(x_recon.to(physics_device))
+        residual = y_reprojected - y_obs.to(physics_device)
+        return {
+            "reprojection_l1": residual.abs().mean(),
+            "reprojection_l2": residual.square().mean(),
+        }
     def __call__(self, trainer, batch: Batch):
         pred, filters = self.run_model(batch)
         loss_info = {}
@@ -144,7 +212,11 @@ class DeepInvLoss(AbstractLoss):
     @torch.no_grad()
     def val_loss_with_output(self, trainer, batch: Batch) -> tuple[dict[str, float], torch.Tensor, torch.Tensor]:
         pred, filters = self.run_model(batch)
-        loss_info = {}
+        assert batch.corrupt is not None
+        loss_info = {
+            f"val_loss/{k}": v
+            for k, v in self.reprojection_metrics(pred, batch.corrupt).items()
+        }
         if batch.clean is not None:
             metrics = self.compute_img_metrics(pred, batch.clean)
             loss_info.update({f"val_loss/{k}": v for k, v in metrics.items()})

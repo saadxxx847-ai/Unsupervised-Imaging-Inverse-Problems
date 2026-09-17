@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BDD100K synthetic stage specification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "task_name", "stage", "mode", "host", "python",
+    "benchmark_root", "run_root", "benchmark_hashes", "runner_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "task_name": {"type": "string", "minLength": 1},
+    "stage": {"enum": ["inventory", "build", "oracle", "step1", "step2", "step3"]},
+    "mode": {"enum": ["audit", "pilot", "full"]},
+    "variant": {"type": ["string", "null"], "enum": ["oracle", "learned", null]},
+    "seed": {"type": ["integer", "null"], "minimum": 0, "maximum": 4},
+    "host": {"const": "DESKTOP-KBM1345"},
+    "python": {"const": "E:\\Anaconda3\\envs\\ddm4ip\\python.exe"},
+    "benchmark_root": {"type": "string"},
+    "run_root": {"type": "string"},
+    "source_manifest": {"type": ["string", "null"]},
+    "benchmark_summary": {"type": "string"},
+    "pairs_manifest": {"type": "string"},
+    "kernel_gt": {"type": "string"},
+    "expected_manifest_records": {"type": "integer", "minimum": 1},
+    "benchmark_hashes": {
+      "type": "object",
+      "required": ["summary", "pairs", "kernel"],
+      "additionalProperties": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"}
+    },
+    "runner_sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+    "reserved_at": {"type": "string"},
+    "predecessor": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": [
+        "stage", "run_root", "expected_step", "training_state", "training_state_sha256",
+        "network_snapshot", "network_snapshot_sha256", "seed"
+      ],
+      "properties": {
+        "stage": {"enum": ["step1", "step2"]},
+        "run_root": {"type": "string", "minLength": 1},
+        "expected_step": {"type": "integer", "minimum": 1},
+        "training_state": {"type": "string", "minLength": 1},
+        "training_state_sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+        "network_snapshot": {"type": "string", "minLength": 1},
+        "network_snapshot_sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+        "seed": {"type": ["integer", "null"], "minimum": 0, "maximum": 4}
+      }
+    },
+    "overrides": {"type": "object"},
+    "source_manifest_sha256": {"type": ["string", "null"]},
+    "view_manifest_sha256": {"type": ["string", "null"]},
+    "view_root": {"type": ["string", "null"]}
+  }
+}

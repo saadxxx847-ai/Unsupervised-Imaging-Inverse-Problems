@@ -308,7 +308,13 @@ class UNet(torch.nn.Module):
         if out_channels is None:
             out_channels = img_channels
         self.out_conv = MPConv(cout, out_channels, kernel=[3,3])
-        self.register_load_state_dict_pre_hook(self.allow_adding_input_channels)
+        if hasattr(self, "register_load_state_dict_pre_hook"):
+            self.register_load_state_dict_pre_hook(self.allow_adding_input_channels)
+        else:
+            self._register_load_state_dict_pre_hook(
+                self.allow_adding_input_channels,
+                with_module=True,
+            )
 
     def allow_adding_input_channels(
         self,

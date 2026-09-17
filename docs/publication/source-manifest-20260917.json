@@ -1,0 +1,987 @@
+﻿[
+    {
+        "path":  ".gitignore",
+        "bytes":  3608,
+        "sha256":  "3c6b6a0c3e97dca528d4eedad34cee46ac1fdab4d4c27878b0b2d2faf0b8c32d"
+    },
+    {
+        "path":  "AGENTS.md",
+        "bytes":  7821,
+        "sha256":  "95a8a8fb28641d014c25181b1939a1abcfe63565971b599ef3398fe6d08c6532"
+    },
+    {
+        "path":  "ddm4ip/__init__.py",
+        "bytes":  0,
+        "sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+        "path":  "ddm4ip/benchmarks/__init__.py",
+        "bytes":  212,
+        "sha256":  "994b6cd080f155280f9b1eebcbf6b2094ab952b579178fd2eb3194c3819c2d23"
+    },
+    {
+        "path":  "ddm4ip/benchmarks/bdd100k_synthetic.py",
+        "bytes":  16099,
+        "sha256":  "135adc92ffbab6d1c1eb87a885482951453d6a96f5e7665981316648d7908082"
+    },
+    {
+        "path":  "ddm4ip/configs/__init__.py",
+        "bytes":  0,
+        "sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/bdd100k_noisy_patch.yaml",
+        "bytes":  472,
+        "sha256":  "b2783e5dfd9e94d3be8a4d105a4dc65557ada817a0a4d143b34932fc294ae3e6"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/bdd100k_synthetic_clean.yaml",
+        "bytes":  386,
+        "sha256":  "486df45b5d2397be93909481dfde3de700f604cd1ba715e76ce70aa134057c9f"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/bdd100k_synthetic_noisy.yaml",
+        "bytes":  365,
+        "sha256":  "afc818d84377cf4dfd008d4f6293ac358ca94f38cab1f89cf5a16bee7127a7f2"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/bdd100k_synthetic_paired.yaml",
+        "bytes":  251,
+        "sha256":  "d33f1f953f83c12d640b789767c6c54f20f0f2c9276c925c448549cd297616a7"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/bdd100k_unpaired.yaml",
+        "bytes":  355,
+        "sha256":  "c60855504107420428649957677ec658e838039d948b3917ef9be789585fe24b"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/ddpd_fullimages.yaml",
+        "bytes":  221,
+        "sha256":  "941055598fcfaada6a43041de35502a7d781d8b9cbe47f1587d1a140b0794bd9"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/ddpd_patches.yaml",
+        "bytes":  534,
+        "sha256":  "11a11ddd4e6760de7dbb15e459c04516f6dd2724ed50aae22d5fe7589b77d731"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/degradation/file_blur.yaml",
+        "bytes":  105,
+        "sha256":  "37e4fc61bc942d5f23c5080ccfe2bfb1e5150b10c072796b1fbfb131307469df"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/degradation/file_downsampling.yaml",
+        "bytes":  91,
+        "sha256":  "b0c4ce64b1723a4ad98eea0be411ebe692a43c88c20513c5d561851842afcf64"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/degradation/gaussian_blur.yaml",
+        "bytes":  55,
+        "sha256":  "c5b2394b6d832da7cf0b51fb69f864dd85234b45608a6eed489e91fcb7bcbd46"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/degradation/gaussian_downsampling.yaml",
+        "bytes":  102,
+        "sha256":  "75246e5c2aa11db3cf6bb939679273fdd5c2e70f8bcee5ae0a426201057c494b"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/degradation/motion_blur.yaml",
+        "bytes":  63,
+        "sha256":  "86d617545a1d61c40fbd1686ac58afb76e7f56e2cbff99be5d6551da93ec17b7"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/degradation/no_degradation.yaml",
+        "bytes":  14,
+        "sha256":  "496e0d092abe3cde6433076b4049a1f294e599c4c8db1ab70de6b682102e125b"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/degradation/padding.yaml",
+        "bytes":  49,
+        "sha256":  "0afc1e48eb9735c2167ad3e6c53a408c578b2f6fa4cd7fedd5a0c35670c22940"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/degradation/per_patch_blur.yaml",
+        "bytes":  125,
+        "sha256":  "2d64ddd7423e1bb436879af7deef8f122001f1966e0a3ced389e1fbff828b6f1"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/degradation/per_pixel_blur.yaml",
+        "bytes":  55,
+        "sha256":  "485da6e6c2c1931115f537ea6e01af782795d1d6d476d7448dab65c76d9f7bfe"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/div2k.yaml",
+        "bytes":  612,
+        "sha256":  "448fac1e8e1ae1e7356e834843c389653bd9e3483cf9b60c91252a7fc41aa82a"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/div2krk.yaml",
+        "bytes":  637,
+        "sha256":  "f6e21e6c929c4bd45ad1f892c52e5c7f3056287fb76a341df93de244ca83eb0a"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/ffhq.yaml",
+        "bytes":  187,
+        "sha256":  "1f458cde3647c90e519264a8e87d3974a8d1623aa41a4d254a7ac74f4f12cd33"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/noise/gaussian.yaml",
+        "bytes":  25,
+        "sha256":  "56912e64a8133f29d3f895cc562002fb815c73c6e429a02d0de8dc86d6baf03d"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/noise/no_noise.yaml",
+        "bytes":  14,
+        "sha256":  "496e0d092abe3cde6433076b4049a1f294e599c4c8db1ab70de6b682102e125b"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/plot_center5.6.yaml",
+        "bytes":  537,
+        "sha256":  "cdf92bd7deb1481180bec39412910f04cb5dd52d3d42717a85949fd5d06f2729"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/plot_train16.yaml",
+        "bytes":  259,
+        "sha256":  "a81c849a47fbf05629338c03d9ddf2a68fd197f3928faf8be601ac84985cbfbe"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/plot_train16_fullimg.yaml",
+        "bytes":  516,
+        "sha256":  "a8da35abe499b87829747115115e46ec182c8e14770c086ccbd7b33905b9ec4d"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/plot16_fullimgs.yaml",
+        "bytes":  196,
+        "sha256":  "9db8cbc327fcb81c97b25d6e5c3dda84e688be5b35af3f0132326618b500cc2d"
+    },
+    {
+        "path":  "ddm4ip/configs/dataset/plot5.6_fullimgs.yaml",
+        "bytes":  197,
+        "sha256":  "53f8901ad2b75af5e320ff18dbd9860897b7095b4d9436f79390eb99f2695c66"
+    },
+    {
+        "path":  "ddm4ip/configs/exp/step1_bdd100k.yaml",
+        "bytes":  600,
+        "sha256":  "d8c941afe550ece36f5f39f492ef4a772c610ff4516d0ffdddef710acf37943f"
+    },
+    {
+        "path":  "ddm4ip/configs/exp/step1_bdd100k_synthetic.yaml",
+        "bytes":  622,
+        "sha256":  "a14d91f5db5b9ef220a5166da418c4a44d6db91c80708bee602f3759925c0163"
+    },
+    {
+        "path":  "ddm4ip/configs/exp/step1_ffhq.yaml",
+        "bytes":  796,
+        "sha256":  "690c4bb3213c49f5f37c63bf2c0736a7e642cb7b49116c65a3c0931d9c57a0c7"
+    },
+    {
+        "path":  "ddm4ip/configs/exp/step1_nonuniform.yaml",
+        "bytes":  1116,
+        "sha256":  "5a2fd0aadc9525f6384046a54c0f5a1fe2ad114e1251fa897677a90ff082752f"
+    },
+    {
+        "path":  "ddm4ip/configs/exp/step1_parkinglot.yaml",
+        "bytes":  717,
+        "sha256":  "c810a4b5a61c7b9e0df77432acef29e237f6341db58c10a263616e63682bbca4"
+    },
+    {
+        "path":  "ddm4ip/configs/exp/step1_sr.yaml",
+        "bytes":  958,
+        "sha256":  "523933f80ea645cb22376697227ede16a801f7b3275b44d80bc206658c558917"
+    },
+    {
+        "path":  "ddm4ip/configs/exp/step2_bdd100k.yaml",
+        "bytes":  1204,
+        "sha256":  "b31aad1d387fb7d550d1ac0ccd5a79e3b9fb3c98ead9a9cef9f24889682234f7"
+    },
+    {
+        "path":  "ddm4ip/configs/exp/step2_bdd100k_synthetic.yaml",
+        "bytes":  931,
+        "sha256":  "2ebc350921f5b533e283354ad5fc4128e902250562dd330d7f31415d7972b549"
+    },
+    {
+        "path":  "ddm4ip/configs/exp/step2_ffhq.yaml",
+        "bytes":  1093,
+        "sha256":  "a5cc222b78587519504c68fc48e42714a8030fafcaaf540a51de2c7f40a4006a"
+    },
+    {
+        "path":  "ddm4ip/configs/exp/step2_nonuniform.yaml",
+        "bytes":  2035,
+        "sha256":  "f02957a0df725b1ade73da411e7840e30e90f1c9b908e9f3e5efbbc62822b123"
+    },
+    {
+        "path":  "ddm4ip/configs/exp/step2_parkinglot.yaml",
+        "bytes":  1636,
+        "sha256":  "9d202b80493c436f4389f1508d2322a03a9132c8b0e5ac47aded69e3e71c6ebc"
+    },
+    {
+        "path":  "ddm4ip/configs/exp/step2_sr.yaml",
+        "bytes":  1316,
+        "sha256":  "2189cb2446e38fe0088f03ac0b96dd0493dc038149d1d93045443376370a8495"
+    },
+    {
+        "path":  "ddm4ip/configs/exp/step3_bdd100k.yaml",
+        "bytes":  596,
+        "sha256":  "eb138f5052d795bf8af4a53558d970c28d4962f77af4811da09083abc234cf72"
+    },
+    {
+        "path":  "ddm4ip/configs/exp/step3_bdd100k_oracle.yaml",
+        "bytes":  746,
+        "sha256":  "f25a0283ae702b1812b6faeb47bfbfdc105d0a802c8f8a8924b42cc07bf5a0a6"
+    },
+    {
+        "path":  "ddm4ip/configs/exp/step3_bdd100k_synthetic.yaml",
+        "bytes":  748,
+        "sha256":  "24710eed47c3b20658daa0e47451a9707e50dddc61e40a2b3a8e4f98bb221920"
+    },
+    {
+        "path":  "ddm4ip/configs/exp/step3_ffhq.yaml",
+        "bytes":  1095,
+        "sha256":  "9aac482aec1275896ddc5b0064450d12663ecfd595b6d3d1feaadafd41776bbf"
+    },
+    {
+        "path":  "ddm4ip/configs/exp/step3_nonuniform.yaml",
+        "bytes":  1439,
+        "sha256":  "fdfb7e1f6e1197a8aa36c9ac0e00a6e221668f79f35fb925777d1a20e222f9fa"
+    },
+    {
+        "path":  "ddm4ip/configs/exp/step3_parkinglot.yaml",
+        "bytes":  1081,
+        "sha256":  "1b17a737a6df2a89d6bb0ab2d3bc94d661a8f09ebebd91a5fd1258023863d876"
+    },
+    {
+        "path":  "ddm4ip/configs/exp/step3_sr.yaml",
+        "bytes":  1352,
+        "sha256":  "941ba41d4c6e075c958e08f6e78b5e13e9b12989df54e03b74f4bba1aa757f40"
+    },
+    {
+        "path":  "ddm4ip/configs/generation/flow.yaml",
+        "bytes":  13,
+        "sha256":  "684af8178120f408aea2dd2168fd9db8804b90ba1a488527090e6caf66639d8a"
+    },
+    {
+        "path":  "ddm4ip/configs/loss/deepinv.yaml",
+        "bytes":  182,
+        "sha256":  "23e35a9acd434137897879352ecaf8333fc5aee84d4c185122fdba4b27a2a15e"
+    },
+    {
+        "path":  "ddm4ip/configs/loss/flow_matching.yaml",
+        "bytes":  63,
+        "sha256":  "4b0189155720c6d7fd010196a4bfb89d459777a763edbc1d7676f0787e8146ef"
+    },
+    {
+        "path":  "ddm4ip/configs/main.yaml",
+        "bytes":  263,
+        "sha256":  "491e305a7d86f70fddab5a28fb7c2e2309fe10b20a8530e9144178f69daf6845"
+    },
+    {
+        "path":  "ddm4ip/configs/models/conv_centerpixel.yaml",
+        "bytes":  116,
+        "sha256":  "3ff5ec3d708e5707540a229261588e087ae031e977edbf219f14a8bb176aac31"
+    },
+    {
+        "path":  "ddm4ip/configs/models/conv_kernel.yaml",
+        "bytes":  93,
+        "sha256":  "1655d34f436c4d418acc2fe29741a7384df579723de05f960c9417f30aefe8f3"
+    },
+    {
+        "path":  "ddm4ip/configs/models/conv_sr_kernel.yaml",
+        "bytes":  100,
+        "sha256":  "e4bd13c577f5cc2e9613213f6ed58afe6a4baf85ea8933688616725615bfdbae"
+    },
+    {
+        "path":  "ddm4ip/configs/models/direct_centerpixel.yaml",
+        "bytes":  242,
+        "sha256":  "bad1381a12fa05acd081ee570a2a04b6dbcb231ef7e206e4ea445491c43ea32d"
+    },
+    {
+        "path":  "ddm4ip/configs/models/direct_kernel.yaml",
+        "bytes":  109,
+        "sha256":  "337b4debbbff20a22c8c33215ac3ac2216cb456c256d70574eb9f4a9942e3b6b"
+    },
+    {
+        "path":  "ddm4ip/configs/models/direct_per_pixel_kernelnn.yaml",
+        "bytes":  76,
+        "sha256":  "b191fa2777515fc85328076c940d32a9ce3ddc7e724f7c4bc0bacdb8f085e16f"
+    },
+    {
+        "path":  "ddm4ip/configs/models/dpir_bdd100k_256.yaml",
+        "bytes":  27,
+        "sha256":  "8dc1c50acebe2d4574e7b6ecdbb8cd8347205641ca17d7d020eac1813610458c"
+    },
+    {
+        "path":  "ddm4ip/configs/models/xs_flow.yaml",
+        "bytes":  130,
+        "sha256":  "64e2d842b0f554f6c03d34dcea6b712c4a8fa895b81bd05c1c5340047fea5f80"
+    },
+    {
+        "path":  "ddm4ip/configs/models/xxs_flow_64.yaml",
+        "bytes":  125,
+        "sha256":  "cc5e74fbd76be84fb16715cb320ddc528269e1fb265e835aeee1e344a4e50771"
+    },
+    {
+        "path":  "ddm4ip/configs/models/xxxs_flow_256.yaml",
+        "bytes":  128,
+        "sha256":  "c3ae49f7bac84d1ce784e312bd32b6ade7621483a06cf6f7b106c654cd06da40"
+    },
+    {
+        "path":  "ddm4ip/configs/models/xxxs_flow_32.yaml",
+        "bytes":  124,
+        "sha256":  "b5a1c08a8c59931a8159f589e3b190add4922b7a9248d75950959b22ec1b68c1"
+    },
+    {
+        "path":  "ddm4ip/configs/models/xxxs_flow_64.yaml",
+        "bytes":  127,
+        "sha256":  "78df1130b016cbf854dfa20ceabf059c8f25b05cbe90ed3e3391a4a2053bf4c8"
+    },
+    {
+        "path":  "ddm4ip/configs/paths/bdd100k_runtime.yaml",
+        "bytes":  137,
+        "sha256":  "4ff49f9cea34e9c7e4a1342a602a2cdde58ed574699c228394fe0b245f1368d9"
+    },
+    {
+        "path":  "ddm4ip/configs/paths/bdd100k_synthetic_runtime.yaml",
+        "bytes":  139,
+        "sha256":  "ef1c28f35d284a5cf01f486efa9276ce383de203c6d2f735483f185551bdbcf7"
+    },
+    {
+        "path":  "ddm4ip/configs/paths/default.yaml",
+        "bytes":  43,
+        "sha256":  "fd97554da8c5811b8fde338fc5550ea6157aca99915bdeea604f7916b192238f"
+    },
+    {
+        "path":  "ddm4ip/configs/paths/edgar.yaml",
+        "bytes":  101,
+        "sha256":  "12379e63f6fc8a7d5c63b2bd2ddaa359cfc8871d397e12888bb55e375da26741"
+    },
+    {
+        "path":  "ddm4ip/configs/paths/edgar_giac.yaml",
+        "bytes":  99,
+        "sha256":  "21802ba0cfc456935df2c253229c3752c93b6900442bac5bea7c0fd8521f4024"
+    },
+    {
+        "path":  "ddm4ip/configs/paths/jz.yaml",
+        "bytes":  121,
+        "sha256":  "b7319740dc468692750388881f0db83984c67d642d4cc78e1bf3637f4d31ea46"
+    },
+    {
+        "path":  "ddm4ip/configs/training/default.yaml",
+        "bytes":  352,
+        "sha256":  "16f4dea2e05c4b446fdeeff6bb16a1afb020862ef2dc07578bdf02ce3a567cbf"
+    },
+    {
+        "path":  "ddm4ip/configs/training/validation.yaml",
+        "bytes":  254,
+        "sha256":  "14f680e22537414fd13640464bad78f361e11c676d21f325dd4912afd9c546dc"
+    },
+    {
+        "path":  "ddm4ip/data/__init__.py",
+        "bytes":  301,
+        "sha256":  "0adc364b11937b1b578a182e1021fa8a0555d08cf77e4709b52f959fc7716a1c"
+    },
+    {
+        "path":  "ddm4ip/data/base.py",
+        "bytes":  8254,
+        "sha256":  "9629c55c8d5e27de8a7039ab1fc6fd17d3d9409579c1383a67b289dc8a80e24a"
+    },
+    {
+        "path":  "ddm4ip/data/image_folder_dataset.py",
+        "bytes":  15618,
+        "sha256":  "3a3a7ad38573caff820bc6075c35aa41c02ae01d7a30f8194ea7083e098e9892"
+    },
+    {
+        "path":  "ddm4ip/data/manifest_paired_dataset.py",
+        "bytes":  7517,
+        "sha256":  "146aaf87dfe480e23a418e93f1ad104e7d58c802723a11d81b401260c8f03820"
+    },
+    {
+        "path":  "ddm4ip/data/patch_dataset.py",
+        "bytes":  22314,
+        "sha256":  "e93225f09f8ae96ea73e2eb89324d0183c4becd68bbb2e0aa7900211991f6574"
+    },
+    {
+        "path":  "ddm4ip/data/simple_patch_dataset.py",
+        "bytes":  6349,
+        "sha256":  "3c1eafedeee8c3ac660255c0e0d0a9b1314dffc0604b308c2f801a05fbf9cfdd"
+    },
+    {
+        "path":  "ddm4ip/data/utils.py",
+        "bytes":  7270,
+        "sha256":  "5bab6b1e08794ce37405960945c9d1999b45568bf7f5bb91ff5842407d3bd35e"
+    },
+    {
+        "path":  "ddm4ip/degradations/blur.py",
+        "bytes":  1329,
+        "sha256":  "d068f0b95f8d37822c8337446b881c9997445b833fd7d51e99eb46af98c769cd"
+    },
+    {
+        "path":  "ddm4ip/degradations/degradation.py",
+        "bytes":  5755,
+        "sha256":  "ae16e48e73cff427a054690c38d4b7d91d090433933508efecb12af3916dc137"
+    },
+    {
+        "path":  "ddm4ip/degradations/downsampling.py",
+        "bytes":  2390,
+        "sha256":  "e86a37faf7893373a29fbb2183825ed50771f024a93264c2f30b54f6e160d025"
+    },
+    {
+        "path":  "ddm4ip/degradations/motion_blur.py",
+        "bytes":  13633,
+        "sha256":  "a85616db49e241170852961425a6cb149b5bef9925106a3305ea4fc8195052ec"
+    },
+    {
+        "path":  "ddm4ip/degradations/varpsf.py",
+        "bytes":  17920,
+        "sha256":  "d88e3d76a00ccd4c4b6052ea4c687e20a38298d18506e3416543f1347c49b957"
+    },
+    {
+        "path":  "ddm4ip/flowmatching_utils/generate.py",
+        "bytes":  6261,
+        "sha256":  "2aba11846f33a5c3ba65f722f40fe7cbb057e20edb41a510a6c436f56df81c88"
+    },
+    {
+        "path":  "ddm4ip/losses/base.py",
+        "bytes":  2603,
+        "sha256":  "fa331f17c00a7804ae52422f163c9f1912b01f19b8f6a14bd2f3877a39499601"
+    },
+    {
+        "path":  "ddm4ip/losses/deepinv_loss.py",
+        "bytes":  11903,
+        "sha256":  "6ba878590f411abfd008e4b9f44f67b4159348847004ba1a859eb633893f6502"
+    },
+    {
+        "path":  "ddm4ip/losses/di_y.py",
+        "bytes":  12410,
+        "sha256":  "ea2e69b6afa38be34891749bb5d964b5e9b179f09558a1f989ff1b9904156909"
+    },
+    {
+        "path":  "ddm4ip/losses/flow_matching.py",
+        "bytes":  5845,
+        "sha256":  "2eeaabfc236d5b6fc293814d633f8066d7b8b95616b0cef931d31e965eb4de65"
+    },
+    {
+        "path":  "ddm4ip/losses/utils.py",
+        "bytes":  3427,
+        "sha256":  "cff47705f99853716147631d0fb4414158242398e681b1af672eba09c2082615"
+    },
+    {
+        "path":  "ddm4ip/main.py",
+        "bytes":  2339,
+        "sha256":  "49f311a8524d01e24b1da892977df15816761055663ea55c560e808508818d1b"
+    },
+    {
+        "path":  "ddm4ip/networks/__init__.py",
+        "bytes":  5101,
+        "sha256":  "8f826a18b84f4ddddb96e736ca1cf6d06d8dce19def73618dd2bf8ffb27dc8f6"
+    },
+    {
+        "path":  "ddm4ip/networks/blur_nets.py",
+        "bytes":  21327,
+        "sha256":  "895f1ed1d04666461893f42d8e1f43ce0dd5769e6a3d3331cde9c2753fc027ac"
+    },
+    {
+        "path":  "ddm4ip/networks/unets.py",
+        "bytes":  25338,
+        "sha256":  "9eec7825b1f4af56fe6990716d98ed8ab6491112ae3c7de1be58bed5554ddf8b"
+    },
+    {
+        "path":  "ddm4ip/psf/psf.py",
+        "bytes":  4492,
+        "sha256":  "cf7027dbf487ca955b52de4fd215c164c73c14c32d75e5d3f22b3eb7677f0c44"
+    },
+    {
+        "path":  "ddm4ip/trainers/base.py",
+        "bytes":  24992,
+        "sha256":  "59b1b45ecb2b98d2a48282b923f04ccecd68c1749bc163a2cd723d763475fd92"
+    },
+    {
+        "path":  "ddm4ip/trainers/deepinv_denoiser.py",
+        "bytes":  26725,
+        "sha256":  "9cdba7d6dd4275e39e7e6ae2c988d349767103632aa60d30f5361e41dc3bbcce"
+    },
+    {
+        "path":  "ddm4ip/trainers/diffinstruct_learn_op.py",
+        "bytes":  7902,
+        "sha256":  "61b6b44c54721527b87e34861daaa840bb8b311aba1610ad356e72017314da29"
+    },
+    {
+        "path":  "ddm4ip/trainers/finetune_flow.py",
+        "bytes":  6845,
+        "sha256":  "194e6d10b0a02cc9cc60ad1a39334ff0366c5d4798dd3ab7ca23f3ca652211d1"
+    },
+    {
+        "path":  "ddm4ip/trainers/plots.py",
+        "bytes":  14121,
+        "sha256":  "a5ccca3ab42e49fe81f5b14b6ce92f925a9c2177296e223060947c1b9b08a026"
+    },
+    {
+        "path":  "ddm4ip/trainers/train_utils.py",
+        "bytes":  1662,
+        "sha256":  "f8ace304eed46c4d93cb3992bed4b2c88909942d2a29bf1b24b7d4a04c5fe52d"
+    },
+    {
+        "path":  "ddm4ip/utils/__init__.py",
+        "bytes":  66,
+        "sha256":  "5b20fe5685d95efda183321035365203457eb8b0bccfbb3e15376a3748421604"
+    },
+    {
+        "path":  "ddm4ip/utils/benchmark_metrics.py",
+        "bytes":  22568,
+        "sha256":  "939ca21b2e0dcc44eaf4b88d1b51f1daba11acbb27a1a12085f5782c725ebcde"
+    },
+    {
+        "path":  "ddm4ip/utils/deepinv_utils.py",
+        "bytes":  6503,
+        "sha256":  "1cf1d1e0c42abfd8167e43a2b462bdab4ee475fc0fd0a6fad0026471f6bed574"
+    },
+    {
+        "path":  "ddm4ip/utils/diffpir.py",
+        "bytes":  6196,
+        "sha256":  "daf4d4d5bdb2efe8599a4c2cbbc26948d1a97275e5e2fc1f8ad286db5478d93d"
+    },
+    {
+        "path":  "ddm4ip/utils/distributed.py",
+        "bytes":  7632,
+        "sha256":  "b5f0af66f87f60e2a6d08d491c142292937098f30f17b0d965c9fa5a3e3dbe66"
+    },
+    {
+        "path":  "ddm4ip/utils/easy_dict.py",
+        "bytes":  4322,
+        "sha256":  "d963372ea674964f37af6fb34c66fdf238e98e1fc33acfc81be8401f664a72f8"
+    },
+    {
+        "path":  "ddm4ip/utils/metrics.py",
+        "bytes":  4535,
+        "sha256":  "c10b523446ded968b4a81447c51300912f0e79a9649268d60ef0961aca4a2548"
+    },
+    {
+        "path":  "ddm4ip/utils/persistence.py",
+        "bytes":  10289,
+        "sha256":  "a40bba889c4bab09087d87f13b5815b687158715bcef1dc03c53d770b8a83a87"
+    },
+    {
+        "path":  "ddm4ip/utils/phema.py",
+        "bytes":  1834,
+        "sha256":  "3d2aa0e1f7bc51b76bfd0378dc650aab132e8480298baf826d34924cc691e430"
+    },
+    {
+        "path":  "ddm4ip/utils/torch_utils.py",
+        "bytes":  11958,
+        "sha256":  "ca83297170ab1397426dba7b15ba933670223066c6556a835b1201abf737c981"
+    },
+    {
+        "path":  "ddm4ip/utils/training_stats.py",
+        "bytes":  11411,
+        "sha256":  "3f3162080fa6a20d14fc5b48ac71117a603056a29ae1fa8fa619a7f7f033d0eb"
+    },
+    {
+        "path":  "docs/reports/2026-09-04-group-meeting-progress.md",
+        "bytes":  2593,
+        "sha256":  "b3abe1831a6af51139916275d866ebb81ce1d53285da7adc337c968dda65f8a3"
+    },
+    {
+        "path":  "docs/superpowers/plans/2026-09-03-bdd100k-direct-transfer-baseline.md",
+        "bytes":  18877,
+        "sha256":  "a3aee478abaaacb6e81321553612541b0e8bebb895604ce1c60a0afc1e772007"
+    },
+    {
+        "path":  "docs/superpowers/plans/2026-09-04-bdd100k-next-stages.md",
+        "bytes":  4926,
+        "sha256":  "6dbca3a477cc2baf356069019d22f92531c28a27bc0dc07cf15035b4bb897c84"
+    },
+    {
+        "path":  "docs/superpowers/plans/2026-09-06-bdd100k-known-blur-quantitative-reproduction.md",
+        "bytes":  54351,
+        "sha256":  "1b8f44a1b95b6b7caa58db22981f6dc25da390a0912ab0339b6870e70a492c97"
+    },
+    {
+        "path":  "docs/superpowers/plans/2026-09-08-bdd100k-task10-remediation-and-continuation.md",
+        "bytes":  59062,
+        "sha256":  "ad623ee136cd0ae77611d3c34e55d7d0a69ae6bb7533279604683c7b9b0e137a"
+    },
+    {
+        "path":  "docs/superpowers/plans/2026-09-10-task11-step1-b16-formal-fallback.md",
+        "bytes":  7623,
+        "sha256":  "411818633aa3828027c14117c02b6a55375607c88c2de3197b90b99d7e1d371a"
+    },
+    {
+        "path":  "docs/superpowers/specs/2026-09-03-bdd100k-direct-transfer-baseline-design.md",
+        "bytes":  9464,
+        "sha256":  "0026c5b5e9fb922693c4f3d580acd6e22d51b46adf082491b2c518e33a8c06df"
+    },
+    {
+        "path":  "docs/superpowers/specs/2026-09-06-bdd100k-known-blur-quantitative-reproduction-design.md",
+        "bytes":  18925,
+        "sha256":  "6238e075f8fb37f5823fd0ef362553f8c873970b63da428bd6b66b218a42e555"
+    },
+    {
+        "path":  "docs/superpowers/specs/2026-09-10-task11-step1-b16-formal-fallback-amendment.md",
+        "bytes":  3390,
+        "sha256":  "774b8381f9f59dcda1db73f24432320a97177073d622068ba60e8a969754201c"
+    },
+    {
+        "path":  "github_figures/frontfig.png",
+        "bytes":  363384,
+        "sha256":  "aef0d26973777fc5021195ccdb0297606ae975665a8df0d80cf9bfa35ff861f8"
+    },
+    {
+        "path":  "LICENSE.txt",
+        "bytes":  1066,
+        "sha256":  "27904f93032ef3296265967cd6d19fe3d887016d684150a7e7dd94efeddbc49e"
+    },
+    {
+        "path":  "notebooks/EboliFast.ipynb",
+        "bytes":  1185648,
+        "sha256":  "8c893387ae5cb1423c260ad877539fa17a87911118153bbc6d20efa14b67cacb"
+    },
+    {
+        "path":  "readme.md",
+        "bytes":  8275,
+        "sha256":  "df7a44774f36a7c0335d85a8aee369f566fa9feaba85e30e8bdf695f7fc31f73"
+    },
+    {
+        "path":  "requirements.txt",
+        "bytes":  165,
+        "sha256":  "712c3e3dcec80a7a36cc071257b11cb1ab47ea27b0e196e27d16aaacced6f8de"
+    },
+    {
+        "path":  "scripts/__init__.py",
+        "bytes":  0,
+        "sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+        "path":  "scripts/aggregate_bdd100k_synthetic_results.py",
+        "bytes":  983,
+        "sha256":  "524ac69be5bd4a74b905650124c85397503a0c554ba378a7310dfd0f73b6b8ca"
+    },
+    {
+        "path":  "scripts/analyze_bdd100k_synthetic_kernel.py",
+        "bytes":  3565,
+        "sha256":  "a25b95562f64f52043ca80dbb2c8e29b05a3cbb6c4bb0afa7d80babaf393d5e4"
+    },
+    {
+        "path":  "scripts/bdd100k_synthetic_runner.py",
+        "bytes":  43001,
+        "sha256":  "9ed9344827d11a051ad60416a4e9f8085a9026d89105c15e48f76510ce4c8710"
+    },
+    {
+        "path":  "scripts/blur_baselines/fastdiffem_config.yaml",
+        "bytes":  405,
+        "sha256":  "a638e6f17195df77fbb35a2216854e9e02c5f2c68dd020c9c67406e1061e017c"
+    },
+    {
+        "path":  "scripts/blur_baselines/readme.md",
+        "bytes":  1508,
+        "sha256":  "b6b6c85a3c61d77e74515efe1b5efecc0fc4e7361155737792703e1e2b378aea"
+    },
+    {
+        "path":  "scripts/blur_baselines/run_fastdiffem.py",
+        "bytes":  5332,
+        "sha256":  "955affa69623e4ee6c15041f2e00cc6608080bf773cb84528da6d8648eb10c22"
+    },
+    {
+        "path":  "scripts/build_bdd100k_synthetic_benchmark.py",
+        "bytes":  2690,
+        "sha256":  "0f26975c9fb13fe7559ebe1bd3a31dad4d3480dd873fa33c134cad1d7a4df1aa"
+    },
+    {
+        "path":  "scripts/build_bdd100k_views.py",
+        "bytes":  6633,
+        "sha256":  "ac1a4d9197c654eb588b918079a6d38885569f642d579e0dc9bd5c12eb53c246"
+    },
+    {
+        "path":  "scripts/esrgan/.gitignore",
+        "bytes":  10,
+        "sha256":  "5d9cf706564ea4754dc38e104faa8bae7166d248da64d0dadd68889c6c106ea8"
+    },
+    {
+        "path":  "scripts/esrgan/config.yaml",
+        "bytes":  2878,
+        "sha256":  "8cd0288ff8918fdad8f42cb72cce23187ca957455e2dc2fb40a919e69196a4a1"
+    },
+    {
+        "path":  "scripts/esrgan/gen_dset_for_esrgan.py",
+        "bytes":  13063,
+        "sha256":  "5b1dfeefdac940b796e64a3ad62dd5af1abd2da961a2b55d19d677f66bad44b9"
+    },
+    {
+        "path":  "scripts/get_spacevarying_psf.py",
+        "bytes":  5835,
+        "sha256":  "01650f9dc937b86675804aa4c68ad2130df6333f4d5cd3cfdd2a438355a48dd2"
+    },
+    {
+        "path":  "scripts/oar_run_exp.sh",
+        "bytes":  2337,
+        "sha256":  "df056480e499649d637171fcde1b5de6cae1d7d75bc42a16ea3b03633feb6a8d"
+    },
+    {
+        "path":  "scripts/preprocess_ddpd.py",
+        "bytes":  4353,
+        "sha256":  "d04397f844a8521d5c687d84658ef822e4ea911ebf5ea2d58517084f3cc84d90"
+    },
+    {
+        "path":  "scripts/preprocess_div2k.py",
+        "bytes":  2955,
+        "sha256":  "207e212ad0e9cfb5b2048919b988a69fc8bea5b1007ba5203df343c03b7fa95a"
+    },
+    {
+        "path":  "scripts/preprocess_ffhq.py",
+        "bytes":  4019,
+        "sha256":  "87ef11308e794bf7f56accdcabc9ae0bc8500c115eb0ff3b52f9bc99e92159f6"
+    },
+    {
+        "path":  "scripts/preprocess_parkinglot.py",
+        "bytes":  10413,
+        "sha256":  "b326a15ef4333e4b5f95066612c3477f18f9abdb010e78386189ba3f228ba478"
+    },
+    {
+        "path":  "scripts/restormer/.gitignore",
+        "bytes":  11,
+        "sha256":  "d4ab8d7588e428a4f4b9f368e47b60bfc1695dd8f276c74d2386c34ec4765dba"
+    },
+    {
+        "path":  "scripts/restormer/ffhq_motiondeblur_config.yaml",
+        "bytes":  3200,
+        "sha256":  "01a752a7c130097bb7c80764b1624e6066af379de0cbf515eab11520dff39e3c"
+    },
+    {
+        "path":  "scripts/restormer/generate_patches.py",
+        "bytes":  3543,
+        "sha256":  "ec7c3e131fa68bd6d8b12e2730e1c799771339750ea5e3378760c514507ac353"
+    },
+    {
+        "path":  "scripts/restormer/README.md",
+        "bytes":  732,
+        "sha256":  "6078f6868848fc0a510c2a9d36af9ce630e8879628884b02deeea09618cf53b5"
+    },
+    {
+        "path":  "scripts/restormer/run_restormer.py",
+        "bytes":  0,
+        "sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+        "path":  "scripts/restormer/train_restormer.sh",
+        "bytes":  171,
+        "sha256":  "59c988efe6931df6ab93509998fa9e498142282b649fd19128abd2e0e151b084"
+    },
+    {
+        "path":  "scripts/slurm_run_exp.sh",
+        "bytes":  1461,
+        "sha256":  "016a87176e11bc662aa59cc26de931c73aee238f35e5d2f8991a1305d6babb69"
+    },
+    {
+        "path":  "scripts/superresolution/.gitignore",
+        "bytes":  180,
+        "sha256":  "e556a4f27d24d640d5b7eefc8c2c63e9850a2d3ceaf6fa4966c377542591b6b8"
+    },
+    {
+        "path":  "scripts/superresolution/compute_metrics.py",
+        "bytes":  3076,
+        "sha256":  "495989eb4cf3ab9e07c3a5697e15051bb93e07fb63b5e919b82eb1242fc1f45b"
+    },
+    {
+        "path":  "scripts/superresolution/get_kernel_from_network.py",
+        "bytes":  995,
+        "sha256":  "4b975dd6fdf561ceab0170598035d119cb0656d4eaa264ed943ac0a15bcf78f0"
+    },
+    {
+        "path":  "scripts/superresolution/oar_run.sh",
+        "bytes":  674,
+        "sha256":  "9e2c52967f029dd1b91c94abbdca3c8da6838c3f8a68bfd60b2847b7353a4d6c"
+    },
+    {
+        "path":  "scripts/superresolution/README.md",
+        "bytes":  3442,
+        "sha256":  "699445a8bfb772d9ca792e71a35048fbc489cf7a96c4c789956da0500d9f6295"
+    },
+    {
+        "path":  "scripts/superresolution/run_all_ddm4ip.sh",
+        "bytes":  4808,
+        "sha256":  "8b69615752a9f0776f0e4b9b53e56327740a32e602aee65360921c70dab1cac1"
+    },
+    {
+        "path":  "scripts/superresolution/run_dan.py",
+        "bytes":  3526,
+        "sha256":  "738d7bfc42c659bbf26201aa70ea0c49c1b1e309237c704cdd7996e594f62fd7"
+    },
+    {
+        "path":  "scripts/superresolution/run_dan.sh",
+        "bytes":  399,
+        "sha256":  "ad68f1f08630e3d0c4c0e2deec75bdaba9e813822cc4d07fe3b36cd109950ef8"
+    },
+    {
+        "path":  "scripts/superresolution/run_dcls.py",
+        "bytes":  4154,
+        "sha256":  "174664606cfb67031c77cf933a150037c309a02052c87fd8880cbd9102635acb"
+    },
+    {
+        "path":  "scripts/superresolution/run_dcls.sh",
+        "bytes":  401,
+        "sha256":  "8c06596da04f17396f5d638a89370d368f7098620139a0263dcba4dc678c4ed1"
+    },
+    {
+        "path":  "scripts/superresolution/run_dipdkp.py",
+        "bytes":  4850,
+        "sha256":  "1cc651809a6485000d491667821bf2e022066337501312283895a74ce8ec3aea"
+    },
+    {
+        "path":  "scripts/superresolution/run_dipdkp.sh",
+        "bytes":  818,
+        "sha256":  "30f417af674260b085238c63fb7e8968d13e348e24f4de6208e5216f71623b9e"
+    },
+    {
+        "path":  "scripts/superresolution/run_dipfkp.py",
+        "bytes":  3958,
+        "sha256":  "8f17874b6cb885c8cd4bc636200803093e596858057ddadb3cd749ff7805829d"
+    },
+    {
+        "path":  "scripts/superresolution/run_dipfkp.sh",
+        "bytes":  938,
+        "sha256":  "3ad487aa51dd127af9609674bcceec4b1d79179f4df684c270a157d3b8ec2c8d"
+    },
+    {
+        "path":  "scripts/superresolution/run_kernelgan.sh",
+        "bytes":  678,
+        "sha256":  "04be68a7dd75332c59dc734d728c4f05a7529a6a0b4c60161d62f92de3d80cc6"
+    },
+    {
+        "path":  "scripts/superresolution/run_usrnet.py",
+        "bytes":  3194,
+        "sha256":  "6b22030686cf645231e4fc5cd6cd37f706eb837d328c81651474cac19c1dacc3"
+    },
+    {
+        "path":  "scripts/superresolution/run_usrnet_baseline.sh",
+        "bytes":  1132,
+        "sha256":  "9eaea2eb6354c080c0e2737a5abeb34c47da70838075ddaf10e6e3268aad740f"
+    },
+    {
+        "path":  "scripts/superresolution/run_usrnet_ddm4ip.sh",
+        "bytes":  1919,
+        "sha256":  "8bc908f7068d53bad4f9bc4f110283eff4e107bb2f2f332b19e0041e66d1157b"
+    },
+    {
+        "path":  "scripts/superresolution/run_zssr.py",
+        "bytes":  2405,
+        "sha256":  "399e28931389fcd6d3b1c9ae26de6e842cb1b47db352bcb9121ab4a8ccbb3e03"
+    },
+    {
+        "path":  "scripts/superresolution/run_zssr_baseline.sh",
+        "bytes":  906,
+        "sha256":  "0c57fe498de983030568289f4c57da2a15e3987efe608a55563c336e63e41393"
+    },
+    {
+        "path":  "scripts/superresolution/run_zssr_bicubic.sh",
+        "bytes":  2324,
+        "sha256":  "6dfb5f176bb4ca75f6f2c464f0614c12035c8934bc29fda6ceab84aef1aa3414"
+    },
+    {
+        "path":  "scripts/superresolution/run_zssr_ddm4ip.sh",
+        "bytes":  1867,
+        "sha256":  "20b614f795385f9b07b9da72e449e5dad9e56a03ae126db2bc3c6ae9529ad3b9"
+    },
+    {
+        "path":  "tests/fixtures/synthetic_execute_child.py",
+        "bytes":  2996,
+        "sha256":  "044ec3bb814fbe354c5fca5f065671f8f9fd579355a1e72f217e7ea4b55d5ee3"
+    },
+    {
+        "path":  "tests/test_base_trainer_final_checkpoint.py",
+        "bytes":  4465,
+        "sha256":  "49f7b67131bc321c322383a6a257a3310776c333e96c1b4ee280e3bfcf64c254"
+    },
+    {
+        "path":  "tests/test_bdd100k_configs.py",
+        "bytes":  3399,
+        "sha256":  "bc61ccdc996f6a6407a5ed6ac90ae0ab05dc8f4fce58b9d99fdf62c3fa62507d"
+    },
+    {
+        "path":  "tests/test_bdd100k_synthetic_builder.py",
+        "bytes":  9338,
+        "sha256":  "5afdc7c566cb4b9b19f289bca709b4cd82ba3b05f725f044e3a69fd8eb07130d"
+    },
+    {
+        "path":  "tests/test_bdd100k_synthetic_configs.py",
+        "bytes":  3668,
+        "sha256":  "4248b4422a0dfcc711c7e8952bda35315882c8faa90f70c36b5b31138854f648"
+    },
+    {
+        "path":  "tests/test_bdd100k_synthetic_data_boundaries.py",
+        "bytes":  2166,
+        "sha256":  "499b2f1589aad379711e8895c3a7ec332162589230f02e3140ab4058b33aa484"
+    },
+    {
+        "path":  "tests/test_bdd100k_synthetic_runner.py",
+        "bytes":  33609,
+        "sha256":  "f3a1082198bead692bd46d78f0559eb6ced089e24ad2132d6128daf4c8863408"
+    },
+    {
+        "path":  "tests/test_bdd100k_synthetic_trainer.py",
+        "bytes":  5319,
+        "sha256":  "df56b3ad3826a6d68e6f4eacd1edfc40a81db1de235e34a7fd72c491f8ba5868"
+    },
+    {
+        "path":  "tests/test_bdd100k_view_builder.py",
+        "bytes":  3638,
+        "sha256":  "99bc62d42dc9dc87fc8a0c77fd7e104a3686a4d249f6f13be12cfa180daf70eb"
+    },
+    {
+        "path":  "tests/test_benchmark_metrics.py",
+        "bytes":  10176,
+        "sha256":  "46da48908f2fc27bd4ad18b9575e87c6a1c74e8a18537fd3523e4dc0b078df08"
+    },
+    {
+        "path":  "tests/test_deepinv_no_reference.py",
+        "bytes":  2524,
+        "sha256":  "fb52ae11d23baede1d4d0bdd300fc196b7c697d391064f6cbca3b59af46713e0"
+    },
+    {
+        "path":  "tests/test_file_blur.py",
+        "bytes":  1975,
+        "sha256":  "d9d91a8fb95f235d4f754bc8dfaddbe6d8fb11e9a09d61cba24c75f99f4af47d"
+    },
+    {
+        "path":  "tests/test_internal_package_imports.py",
+        "bytes":  2656,
+        "sha256":  "0e1889ae267f2641440c5437086a8f7e0335a57b963425d60ab66a53c58d6eb7"
+    },
+    {
+        "path":  "tests/test_kernel_hash_canonicalization.py",
+        "bytes":  2483,
+        "sha256":  "3bae69e2cb1b1cf4de958cf56a25cc476fc97668ebf15de9704e233b84a9d9a8"
+    },
+    {
+        "path":  "tests/test_main_multiprocessing.py",
+        "bytes":  749,
+        "sha256":  "c1e7f6e44c0de64f4f0a5a77bb9057449d5fe9460ee6670739b4dd7599ca68ad"
+    },
+    {
+        "path":  "tests/test_manifest_paired_dataset.py",
+        "bytes":  4806,
+        "sha256":  "092a0b7c42f13bbe5fdc07f6ef58c91fbd9b2c532b90b1eec2001fca7289ecfe"
+    },
+    {
+        "path":  "tests/test_noisy_only_patch_dataset.py",
+        "bytes":  2132,
+        "sha256":  "cd9014e2360dcb0a05ad1888a7655aeaa16f91c169bd72d3f3c738c36fe301a8"
+    },
+    {
+        "path":  "tests/test_oracle_filter_geometry.py",
+        "bytes":  3008,
+        "sha256":  "67d699e7fd77d646bbe1286583e3a779d225b0b5659747f11a7bcdb0bf50089d"
+    },
+    {
+        "path":  "tests/test_physics_device_mismatch.py",
+        "bytes":  1267,
+        "sha256":  "590b7745a8acd1d2f9e3e6c6059b8ece0a66406aedda0babe86f39513f1acab3"
+    },
+    {
+        "path":  "tests/test_step3_geometry_provenance.py",
+        "bytes":  10194,
+        "sha256":  "329b38f24b1e3dd77fc674f543d0eddaa5efbf8f9c43026448be79e8c4593ffd"
+    },
+    {
+        "path":  "WORKLOG.md",
+        "bytes":  161852,
+        "sha256":  "cb3c6dd7a402a02a2673fd68dc94484d4624f765651e232020c6c00779e03ea9"
+    }
+]

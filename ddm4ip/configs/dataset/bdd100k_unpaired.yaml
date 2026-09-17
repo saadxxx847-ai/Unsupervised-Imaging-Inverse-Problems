@@ -1,0 +1,15 @@
+defaults:
+ - degradation: no_degradation
+ - noise: no_noise
+
+name: simple_patch
+x_flip: false
+patch_size: 64
+inflate_patches: 13
+space_conditioning: false
+full_test: false
+cuda: false
+
+train_path: D:/DDM4IP-runtime/group-data-views/BDD100K_Blur_Sharp/train/clean
+test_path: D:/DDM4IP-runtime/group-data-views/BDD100K_Blur_Sharp/val/clean
+noisy_path: null

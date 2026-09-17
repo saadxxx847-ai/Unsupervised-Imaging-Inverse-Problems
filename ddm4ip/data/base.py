@@ -55,7 +55,7 @@ class Batch:
         return self.apply(lambda var: var[index])
 
     def to(self, device):
-        return self.apply(lambda var: var.to(device))
+        return self.apply(lambda var: var.to(device) if isinstance(var, torch.Tensor) else var)
 
     @staticmethod
     def collate_fn(batch):
@@ -123,7 +123,7 @@ def init_dataloader(
     start_idx: int,
     is_infinite: bool = True,
 ):
-    from utils.torch_utils import InfiniteSampler
+    from ddm4ip.utils.torch_utils import InfiniteSampler
     mp_ctx = None
     prefetch_factor = None
     if num_workers > 0:
@@ -227,6 +227,15 @@ def init_dataset(cfg: DictConfig, split: Datasplit, is_paired: bool):
             data_path,
             degradation=perturbation,
             shuffle_clean=shuffle_clean,
+            dset_cfg=dset_cfg,
+            split=split,
+        )
+    elif dset_name == 'manifest_paired':
+        from .manifest_paired_dataset import ManifestPairedDataset
+        return ManifestPairedDataset(
+            data_path,
+            degradation=perturbation,
+            shuffle_clean=False,
             dset_cfg=dset_cfg,
             split=split,
         )

@@ -33,8 +33,23 @@ def load_filter_from_file(path, kernel_size: int | None):
         kernel = scipy.io.loadmat(path)["Kernel"]
         kernel = torch.from_numpy(kernel).float()
         kernel = kernel[None, None, ...]
+    elif path.suffix == ".pt":
+        kernel = torch.load(path, map_location="cpu", weights_only=True)
+        if not isinstance(kernel, torch.Tensor):
+            raise TypeError(".pt kernel must contain one tensor")
+        kernel = kernel.detach().to(dtype=torch.float32, device="cpu")
+        while kernel.ndim < 4:
+            kernel = kernel.unsqueeze(0)
+        if kernel.ndim != 4 or tuple(kernel.shape[:2]) != (1, 1):
+            raise ValueError("file blur kernel must canonicalize to 1x1xHxW")
+        if not torch.isfinite(kernel).all() or (kernel < 0).any():
+            raise ValueError("kernel must be finite and nonnegative")
+        if not torch.isclose(
+            kernel.sum(), torch.tensor(1.0, dtype=kernel.dtype), rtol=1e-6, atol=1e-6
+        ):
+            raise ValueError("kernel must sum to one")
     else:
-        raise NotImplementedError("Only mat files are supported")
+        raise ValueError(f"Unsupported kernel file: {path.suffix}")
     if kernel_size is not None:
         kernel = pad_kernel(kernel, kernel_size)
     return kernel
@@ -43,7 +58,7 @@ def load_filter_from_file(path, kernel_size: int | None):
 def instantiate_single_kernel(pert_cfg, noise_model):
     pert_kind = pert_cfg["kind"]
     if pert_kind == "gaussian_blur":
-        from degradations.blur import Blur
+        from ddm4ip.degradations.blur import Blur
         filter = deepinv.physics.blur.gaussian_blur(
             sigma=pert_cfg['kernel_std'],
             angle=pert_cfg.get('kernel_angle', 0),
@@ -54,7 +69,7 @@ def instantiate_single_kernel(pert_cfg, noise_model):
             noise_model=noise_model
         )
     elif pert_kind == "gaussian_downsampling":
-        from degradations.downsampling import Downsampling
+        from ddm4ip.degradations.downsampling import Downsampling
         filter = deepinv.physics.blur.gaussian_blur(
             sigma=pert_cfg['kernel_std'],
             angle=pert_cfg.get('kernel_angle', 0),
@@ -67,7 +82,7 @@ def instantiate_single_kernel(pert_cfg, noise_model):
             noise_model=noise_model
         )
     elif pert_kind == "file_downsampling":
-        from degradations.downsampling import Downsampling
+        from ddm4ip.degradations.downsampling import Downsampling
         filter = load_filter_from_file(pert_cfg["kernel_path"], kernel_size=pert_cfg.get("kernel_size", None))
         return Downsampling(
             img_size=None,
@@ -76,8 +91,18 @@ def instantiate_single_kernel(pert_cfg, noise_model):
             padding=pert_cfg["padding"],
             noise_model=noise_model
         )
+    elif pert_kind == "file_blur":
+        from ddm4ip.degradations.blur import Blur
+        filter = load_filter_from_file(
+            pert_cfg["kernel_path"], kernel_size=pert_cfg.get("kernel_size", None)
+        )
+        return Blur(
+            filter=filter,
+            padding=pert_cfg.get("padding", "replicate"),
+            noise_model=noise_model,
+        )
     elif pert_kind == "motion_blur":
-        from degradations.blur import Blur, get_motion_blur_kernel
+        from ddm4ip.degradations.blur import Blur, get_motion_blur_kernel
         filter = get_motion_blur_kernel(
             pert_cfg["kernel_size"],
             pert_cfg["intensity"],
@@ -89,14 +114,14 @@ def instantiate_single_kernel(pert_cfg, noise_model):
             noise_model=noise_model
         )
     elif pert_kind == "per_pixel_blur":
-        from degradations.varpsf import PerPixelInterpolatedBlur
+        from ddm4ip.degradations.varpsf import PerPixelInterpolatedBlur
         return PerPixelInterpolatedBlur(
             psf_path=pert_cfg["psf_path"],
             kernel_size=pert_cfg["kernel_size"],
             noise_model=noise_model,
         )
     elif pert_kind == "per_patch_blur":
-        from degradations.varpsf import PerPatchInterpolatedBlur
+        from ddm4ip.degradations.varpsf import PerPatchInterpolatedBlur
         return PerPatchInterpolatedBlur(
             psf_path=pert_cfg["psf_path"],
             kernel_size=pert_cfg["kernel_size"],
@@ -104,7 +129,7 @@ def instantiate_single_kernel(pert_cfg, noise_model):
             noise_model=noise_model,
         )
     elif pert_kind == "padding":
-        from degradations.blur import Pad
+        from ddm4ip.degradations.blur import Pad
         return Pad(
             size=pert_cfg["kernel_size"],
             padding=pert_cfg["padding"],

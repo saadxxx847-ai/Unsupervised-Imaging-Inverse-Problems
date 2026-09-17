@@ -1,0 +1,39 @@
+# @package _global_
+
+defaults:
+  - /dataset@dataset.test: bdd100k_synthetic_paired
+  - /models@models.deepinv_solver: dpir_bdd100k_256
+  - override /training: validation
+  - override /loss: deepinv
+
+models:
+  kernel:
+    path: null
+
+loss:
+  crop_filters: 1
+  patch_size: null
+  padding: 0
+  patch_batch_size: 32
+
+evaluation:
+  quantitative: true
+  variant: oracle
+  step2_seed: null
+  expected_records: 500
+  kernel_gt_path: null
+  kernel_gt_sha256: null
+  pairs_manifest_sha256: null
+  benchmark_summary_sha256: null
+
+training:
+  batch_size: 1
+  num_workers: 0
+  train: false
+  report_every_steps: 8
+  plot_every_steps: 8
+  save_eval_to_file: true
+  save_pred_only: true
+  require_output_manifest: true
+
+exp_name: bdd100k_synthetic_step3_oracle

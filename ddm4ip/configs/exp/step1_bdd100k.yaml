@@ -1,0 +1,30 @@
+# @package _global_
+
+defaults:
+ - /models@models.flow: xxxs_flow_64
+ - /dataset@dataset.train: bdd100k_noisy_patch
+ - /dataset@dataset.test: bdd100k_noisy_patch
+ - override /training: default
+ - override /loss: flow_matching
+ - override /generation: flow
+
+optim:
+  lr: 0.01
+
+loss:
+  n_accum_steps: 1
+
+ema:
+  stds: [0.05]
+
+training:
+  batch_size: 1024
+  max_val_batches: 0
+  num_workers: 0
+  max_steps: ${parse_nimg:"17Mi"}
+  save_every_steps: ${parse_nimg:"8Mi"}
+  plot_every_steps: ${parse_nimg:"512Ki"}
+  report_every_steps: ${parse_nimg:"64Ki"}
+  save_eval_to_file: false
+
+exp_name: bdd100k_step1

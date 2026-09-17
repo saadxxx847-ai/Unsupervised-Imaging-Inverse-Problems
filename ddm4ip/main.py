@@ -21,6 +21,12 @@ def parse_nimg(s):
 
 OmegaConf.register_new_resolver("parse_nimg", parse_nimg)
 
+
+def configure_multiprocessing_start_method():
+    if "forkserver" in torch.multiprocessing.get_all_start_methods():
+        torch.multiprocessing.set_start_method("forkserver")
+
+
 @hydra.main(version_base=None, config_path="configs", config_name="main.yaml")
 def my_app(cfg : DictConfig) -> None:
     # NOTE:
@@ -30,7 +36,7 @@ def my_app(cfg : DictConfig) -> None:
     # has been observed on JZ even when running on single GPU, so has been
     # disabled.
 
-    torch.multiprocessing.set_start_method('forkserver')
+    configure_multiprocessing_start_method()
     try:
         distributed.init()
 

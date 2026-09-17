@@ -1,0 +1,12 @@
+defaults:
+  - degradation: file_blur
+  - noise: gaussian
+
+name: manifest_paired
+pairs_role: test_paired
+pairs_dir: test-paired
+path: ${paths.data}/${dataset.test.pairs_dir}/pairs.jsonl
+role: ${dataset.test.pairs_role}
+max_imgs: 500
+noise:
+  std: 0.02
