@@ -160,6 +160,9 @@ class WienerSolver(torch.nn.Module):
         y_np = y.numpy(force=True)
         x_np = np.empty_like(y_np)
         filters_np = physics.filter.numpy(force=True)
+        if filters_np.ndim != 4 or filters_np.shape[0] not in (1, batch_size) or filters_np.shape[1] not in (1, channels):
+            raise ValueError('Wiener filters must broadcast over image batch and channels')
+        filters_np = np.broadcast_to(filters_np, (batch_size, channels, *filters_np.shape[-2:]))
 
         for i in range(batch_size):
             for ch in range(channels):

@@ -34,3 +34,11 @@ From the repository root, the actual module entry point is `python -m ddm4ip.mai
 scripts/orchestration/ contains versioned source copies of previously external runtime files. This publication adds those copies for completeness; it does not relocate or modify active scripts under D:\DDM4IP-runtime\orchestration, register tasks, or change the approved training protocol. Consult existing plans before any installation or execution; do not overwrite an active runtime script without comparing its hash and preserving the existing version.
 
 Future project development and tests remain on the verified remote host. Git commits and pushes for this publication are performed only from the owner's personal computer; no GitHub credentials are installed on the shared computer.
+
+## Source update — 2026-09-22
+
+The publication was refreshed from the current working tree on group-pc after the Step 1 formal run and Step 2 pilot/recovery work. The update contains source code, tests, configurations, plans, and project documentation only. It does not contain datasets, generated benchmark pixels, pretrained weights, training checkpoints, experiment outputs, caches, raw runtime logs, or credentials.
+
+[Source manifest (2026-09-22)](docs/publication/source-manifest-20260922.json) records 202 remote working-tree files. Two local `.orig` backup files were intentionally excluded. The published `readme.md` retains its three-line pointer to this publication note, so that one file intentionally differs from the raw remote-source manifest. [Orchestration manifest (2026-09-22)](docs/publication/orchestration-manifest-20260922.json) records ten external runtime source files. The new source includes checkpoint validation and recovery tests, the Step 2 stall-recovery plan, the Step 1 resume watchdog, and the read-only Step 2 full progress viewer.
+
+At the time of this source freeze, only Task 12 Step 2 full `seed0` had been launched. Its terminal result had not yet been accepted. Publishing this source does not stop, restart, validate, or advance that training run, and it does not authorize `seed1`–`seed4`, Step 3, formal evaluation, or data processing.

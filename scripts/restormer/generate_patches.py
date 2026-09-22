@@ -62,46 +62,46 @@ def extract_center_patch(
 
 
 def extract_tr_val_patches():
+    ############ Prepare Training data ####################
+    num_cores = 10
+    patch_size = 512
+    overlap = 256
+    p_max = 0
+    
+    src = 'Datasets/Downloads/GoPro'
+    tar = 'Datasets/train/GoPro'
+    
+    lr_tar = os.path.join(tar, 'input_crops')
+    hr_tar = os.path.join(tar, 'target_crops')
+    
+    os.makedirs(lr_tar, exist_ok=True)
+    os.makedirs(hr_tar, exist_ok=True)
+    
+    lr_files = natsorted(glob(os.path.join(src, 'input', '*.png')) + glob(os.path.join(src, 'input', '*.jpg')))
+    hr_files = natsorted(glob(os.path.join(src, 'target', '*.png')) + glob(os.path.join(src, 'target', '*.jpg')))
+    
+    files = [(i, j) for i, j in zip(lr_files, hr_files)]
+    
+    Parallel(n_jobs=num_cores)(delayed(extract_paired_patches)(Path(file_[0]), Path(file_[1]), Path(lr_tar), Path(hr_tar), patch_size, overlap) for file_ in tqdm(files))
+    
+    
+    ############ Prepare validation data ####################
+    val_patch_size = 256
+    src = 'Datasets/test/GoPro'
+    tar = 'Datasets/val/GoPro'
+    
+    lr_tar = os.path.join(tar, 'input_crops')
+    hr_tar = os.path.join(tar, 'target_crops')
+    
+    os.makedirs(lr_tar, exist_ok=True)
+    os.makedirs(hr_tar, exist_ok=True)
+    
+    lr_files = natsorted(glob(os.path.join(src, 'input', '*.png')) + glob(os.path.join(src, 'input', '*.jpg')))
+    hr_files = natsorted(glob(os.path.join(src, 'target', '*.png')) + glob(os.path.join(src, 'target', '*.jpg')))
+    
+    files = [(i, j) for i, j in zip(lr_files, hr_files)]
+    
+    Parallel(n_jobs=num_cores)(delayed(extract_center_patch)(Path(file_[0]), Path(file_[1]), Path(lr_tar), Path(hr_tar), val_patch_size) for file_ in tqdm(files))
 
-
-
-############ Prepare Training data ####################
-num_cores = 10
-patch_size = 512
-overlap = 256
-p_max = 0
-
-src = 'Datasets/Downloads/GoPro'
-tar = 'Datasets/train/GoPro'
-
-lr_tar = os.path.join(tar, 'input_crops')
-hr_tar = os.path.join(tar, 'target_crops')
-
-os.makedirs(lr_tar, exist_ok=True)
-os.makedirs(hr_tar, exist_ok=True)
-
-lr_files = natsorted(glob(os.path.join(src, 'input', '*.png')) + glob(os.path.join(src, 'input', '*.jpg')))
-hr_files = natsorted(glob(os.path.join(src, 'target', '*.png')) + glob(os.path.join(src, 'target', '*.jpg')))
-
-files = [(i, j) for i, j in zip(lr_files, hr_files)]
-
-Parallel(n_jobs=num_cores)(delayed(train_files)(file_) for file_ in tqdm(files))
-
-
-############ Prepare validation data ####################
-val_patch_size = 256
-src = 'Datasets/test/GoPro'
-tar = 'Datasets/val/GoPro'
-
-lr_tar = os.path.join(tar, 'input_crops')
-hr_tar = os.path.join(tar, 'target_crops')
-
-os.makedirs(lr_tar, exist_ok=True)
-os.makedirs(hr_tar, exist_ok=True)
-
-lr_files = natsorted(glob(os.path.join(src, 'input', '*.png')) + glob(os.path.join(src, 'input', '*.jpg')))
-hr_files = natsorted(glob(os.path.join(src, 'target', '*.png')) + glob(os.path.join(src, 'target', '*.jpg')))
-
-files = [(i, j) for i, j in zip(lr_files, hr_files)]
-
-Parallel(n_jobs=num_cores)(delayed(val_files)(file_) for file_ in tqdm(files))
+if __name__ == "__main__":
+    extract_tr_val_patches()

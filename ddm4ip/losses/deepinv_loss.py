@@ -161,6 +161,8 @@ class DeepInvLoss(AbstractLoss):
         x_net = self.deepinv_model(
             y, self.physics, x_gt=x, compute_metrics=False
         )
+        if not torch.isfinite(x_net).all() or not torch.isfinite(filters).all():
+            raise ValueError('solver output and filters must be finite before clamping')
         x_net = torch.clamp(x_net, 0, 1)
         return x_net, filters
 

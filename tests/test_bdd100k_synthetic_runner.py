@@ -232,7 +232,8 @@ class SyntheticRunnerTests(unittest.TestCase):
                 runner.reserve_spec(spec, current_host=HOST, current_python=PYTHON)
                 with mock.patch.object(runner, "preflight_benchmark_artifacts"), \
                      mock.patch.object(runner, "stage_command", return_value=[PYTHON, "-c", "pass"]) as stage_command, \
-                     mock.patch.object(runner.subprocess, "run", return_value=mock.Mock(returncode=0)):
+                     mock.patch.object(runner.subprocess, "run", return_value=mock.Mock(returncode=0)), \
+                     mock.patch.object(runner, "postflight_stage_artifacts"):
                     code = runner.main([
                         "execute", "--spec", str(Path(spec["run_root"]) / "spec.json"),
                         "--current-host", HOST, "--current-python", PYTHON,
@@ -255,7 +256,7 @@ class SyntheticRunnerTests(unittest.TestCase):
         step2 = runner.build_hydra_overrides({**self.base_spec(stage="step2", seed=2), "predecessor": {"step": 1}},
                                              flow_checkpoint=r"D:\flow.pt")
         self.assertIn("models.pretrained_flow.path=D:/flow.pt", step2)
-        learned = runner.build_hydra_overrides({**self.base_spec(stage="step3", variant="learned", seed=2), "predecessor": {"step": 2}},
+        learned = runner.build_hydra_overrides({**self.base_spec(stage="step3", variant="learned", seed=2), "predecessor": {"step": 2, "network_snapshot_sha256": "f" * 64}},
                                                kernel_snapshot=r"D:\kernel.pkl")
         self.assertIn("models.kernel.path=D:/kernel.pkl", learned)
         self.assertIn("evaluation.step2_seed=2", learned)
@@ -629,6 +630,28 @@ class SyntheticRunnerTests(unittest.TestCase):
                                  "kernel_gt_sha256": hashlib.sha256(kernel_gt.read_bytes()).hexdigest()},
                 oracle=True,
             )
+
+    def test_step2_defaults_to_single_process_dataloader(self):
+        spec = {
+            **self.base_spec(stage="step2", mode="pilot", seed=0),
+            "predecessor": {"stage": "step1"},
+        }
+        overrides = runner.build_hydra_overrides(
+            spec, flow_checkpoint=r"D:\flow.pt"
+        )
+        worker_overrides = [
+            item for item in overrides if item.startswith("training.num_workers=")
+        ]
+        self.assertEqual(worker_overrides, ["training.num_workers=0"])
+
+    def test_step2_rejects_nonzero_dataloader_workers(self):
+        spec = {
+            **self.base_spec(stage="step2", mode="pilot", seed=0),
+            "predecessor": {"stage": "step1"},
+            "overrides": {"training.num_workers": 4},
+        }
+        with self.assertRaisesRegex(ValueError, "training.num_workers=0"):
+            runner.build_hydra_overrides(spec, flow_checkpoint=r"D:\flow.pt")
 
 
 if __name__ == "__main__":

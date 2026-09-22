@@ -95,7 +95,7 @@ def equate_kernel_shapes(
                 f" and k2 of shape {k2.shape}"
             )
         revert = False
-        if k2_shp[-1] < k1_shp[-1]:
+        if k2_shp[-1] < k1_shp[-1] or k2_shp[-2] < k1_shp[-2]:
             k1, k2 = k2, k1
             k1_shp, k2_shp = k2_shp, k1_shp
             revert = True
@@ -110,7 +110,7 @@ def equate_kernel_shapes(
             # torch pad only pads the last dimensions so this should be good
             k1 = torch.nn.functional.pad(k1, [*pad[0], *pad[1]], value=0)
         else:
-            np_pad = [(0, 0) for _ in range(k1.ndim - 2)] + pad
+            np_pad = [(0, 0) for _ in range(k1.ndim - 2)] + [pad[1], pad[0]]
             k1 = np.pad(k1, np_pad, constant_values=0)
         if revert:
             k1, k2 = k2, k1
@@ -190,10 +190,10 @@ def pad_kernel(kernel: torch.Tensor, kernel_size: int | Tuple[int, int]) -> torc
             f"Found kernel of shape {kernel.shape} and desired size {kernel_size}."
         )
     pad = (
-        (kernel_size[0] - kernel.shape[-2]) // 2,
-        (kernel_size[0] - kernel.shape[-2]) // 2 + (kernel_size[0] - kernel.shape[-2]) % 2,
         (kernel_size[1] - kernel.shape[-1]) // 2,
         (kernel_size[1] - kernel.shape[-1]) // 2 + (kernel_size[1] - kernel.shape[-1]) % 2,
+        (kernel_size[0] - kernel.shape[-2]) // 2,
+        (kernel_size[0] - kernel.shape[-2]) // 2 + (kernel_size[0] - kernel.shape[-2]) % 2,
     )
     return torch.nn.functional.pad(kernel, pad, value=0)
 

@@ -21,7 +21,6 @@ class Downsampling(deepinv.physics.Downsampling):
     ):
         if img_size is None:
             img_size = (3, 16, 16)
-        self.device = device
         super().__init__(img_size, filter, factor, device, padding, **kwargs)
 
     def get_kernel(self, img=None, conditioning=None):

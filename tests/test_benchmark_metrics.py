@@ -68,6 +68,7 @@ class BenchmarkMetricsTests(unittest.TestCase):
             expected_count=expected,
             pairs_manifest_sha256="a" * 64,
             benchmark_summary_sha256="b" * 64,
+            predecessor_network_snapshot_sha256=("f" * 64 if variant == "learned" else None),
         )
 
     def _append_row(self, writer, output_dir: Path, source_id: str, value: float):
@@ -163,6 +164,7 @@ class BenchmarkMetricsTests(unittest.TestCase):
                     "kernel_psnr": 20.0 + seed,
                     "kernel_ncc": 0.8 + seed * 0.01,
                     "kernel_gt_sha256": hashlib.sha256(b"kernel-gt").hexdigest(),
+                    "snapshot_sha256": "f" * 64,
                 }), encoding="utf-8")
                 kernel_paths.append(path)
             output = root / "final-summary.json"
@@ -193,6 +195,7 @@ class BenchmarkMetricsTests(unittest.TestCase):
                     "kernel_psnr": 20.0 + seed,
                     "kernel_ncc": 0.8 + seed * 0.01,
                     "kernel_gt_sha256": kernel_hash,
+                    "snapshot_sha256": "f" * 64,
                 }), encoding="utf-8")
                 kernels.append(path)
             output = root / "cli-final-summary.json"

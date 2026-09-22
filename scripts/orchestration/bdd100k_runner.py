@@ -179,6 +179,9 @@ class Run:
         with repository_import_path():
             with snapshot.open("rb") as fh:
                 snapshot_data = pickle.load(fh)
+            from ddm4ip.utils.checkpoint_validation import require_finite_tensors
+            require_finite_tensors(state_data, 'training-state')
+            require_finite_tensors(snapshot_data, 'network-snapshot')
         if not isinstance(state_data, dict) or state_data.get("global_step") != step:
             raise ValueError("training-state global_step is not the claimed terminal step")
         if not isinstance(snapshot_data, dict) or snapshot_data.get("global_step") != step + 1:
@@ -256,6 +259,9 @@ class Run:
         with repository_import_path():
             with snapshot.open("rb") as fh:
                 snapshot_data = pickle.load(fh)
+            from ddm4ip.utils.checkpoint_validation import require_finite_tensors
+            require_finite_tensors(state_data, 'training-state')
+            require_finite_tensors(snapshot_data, 'network-snapshot')
         model_key = "flow_nn" if self.spec["stage"] == "step1" else "kernel_nn"
         if not isinstance(state_data, dict) or state_data.get("global_step") != step or model_key not in state_data:
             raise ValueError("training-state is not a valid terminal stage artifact")
@@ -351,12 +357,20 @@ def main():
                 raise ValueError("Execution requires the reserved spec.json")
             if (root / "execution.claim").exists():
                 raise FileExistsError("Run already claimed; existing files are untouched")
-            run = Run(spec, root)
+            status_path = root / 'status.json'
+            if status_path.is_file() and json.loads(status_path.read_text(encoding='utf-8')).get('state') in {'SUCCESS', 'FAILED'}:
+                raise ValueError('Terminal run is immutable; reserve a new authorized run')
             if args.action == "dispatch-failed":
+                run = Run(spec, root)
                 run.update(state="FAILED", step="dispatch", detail="Task registration/start failed; see launcher output", exit_code=1)
                 return 1
-            run.validate()
-        write_new(root / "execution.claim", str(os.getpid()))
+            pending_run = Run(spec, root)
+            pending_run.validate()
+            # A losing claimant must not mark another process's run FAILED.
+            write_new(root / "execution.claim", str(os.getpid()))
+            run = pending_run
+        if args.action == 'direct':
+            write_new(root / "execution.claim", str(os.getpid()))
         run.execute()
         return 0
     except Exception as exc:

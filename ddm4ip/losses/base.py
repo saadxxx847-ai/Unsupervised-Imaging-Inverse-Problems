@@ -16,6 +16,8 @@ class AbstractLoss(abc.ABC):
         n_accum_steps: int = 1,
     ):
         self.has_val_loss = has_val_loss
+        if not isinstance(n_accum_steps, int) or n_accum_steps < 1:
+            raise ValueError('n_accum_steps must be a positive integer')
         self.n_accum_steps = n_accum_steps
         self.cur_n_accum_steps = 0
 
@@ -47,11 +49,17 @@ class AbstractLoss(abc.ABC):
                     yield optimizer
             else:
                 yield optimizer
-        finally:
+        except BaseException:
+            optimizer.zero_grad(set_to_none=True)
+            self.cur_n_accum_steps = 0
+            raise
+        else:
             if do_optim_step:
+                scale_before = grad_scaler.get_scale()
                 grad_scaler.step(optimizer)
                 grad_scaler.update()
-                if scheduler is not None:
+                # Overflow reduces the scale and skips optimizer.step().
+                if scheduler is not None and grad_scaler.get_scale() >= scale_before:
                     scheduler.step()
                 # if hasattr(module, "initial_param"):
                 #     print(f"{torch.linalg.norm(module.initial_param.grad.view(64, -1), dim=1)=}")

@@ -2,8 +2,11 @@
 import abc
 import copy
 from enum import Enum
+import hashlib
+import json
 import os
 import time
+import uuid
 
 import dill as pickle
 import re
@@ -40,6 +43,91 @@ TYPE_DSETS = Mapping[Datasplit, DatasetType | None]
 TYPE_DLOAD = Mapping[Datasplit, torch.utils.data.DataLoader | None]
 TYPE_MODELS = MutableMapping[str, torch.nn.Module]
 TYPE_LOSS: TypeAlias = 'losses.base.AbstractLoss'  # type: ignore # noqa: F821
+
+
+def _file_sha256(path: str | os.PathLike[str]) -> str:
+    digest = hashlib.sha256()
+    with open(path, 'rb') as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _snapshot_deepcopy_memo(model: torch.nn.Module) -> dict[int, Any]:
+    """Replace runtime autograd tensors while copying a model for snapshots.
+
+    Some physics modules retain the differentiable kernel produced by their
+    last forward call.  That tensor is intentionally kept attached during
+    training, but PyTorch does not allow it to be copied with ``deepcopy``.
+    The memo only affects the detached snapshot copy; the live model and its
+    gradient path are left unchanged.
+    """
+    memo: dict[int, Any] = {}
+    visited: set[int] = set()
+
+    def visit(value: Any) -> None:
+        if isinstance(value, torch.Tensor):
+            if not value.is_leaf:
+                memo[id(value)] = value.detach().clone()
+            return
+        if isinstance(value, dict):
+            value_id = id(value)
+            if value_id in visited:
+                return
+            visited.add(value_id)
+            for key, item in value.items():
+                visit(key)
+                visit(item)
+            return
+        if isinstance(value, (list, tuple, set, frozenset)):
+            value_id = id(value)
+            if value_id in visited:
+                return
+            visited.add(value_id)
+            for item in value:
+                visit(item)
+
+    for module in model.modules():
+        visit(module.__dict__)
+    return memo
+
+
+def _atomic_checkpoint_json(path: str | os.PathLike[str], payload: Dict[str, Any]) -> None:
+    path = os.fspath(path)
+    temporary = path + '.' + uuid.uuid4().hex + '.tmp'
+    with open(temporary, 'xb') as handle:
+        handle.write((json.dumps(payload, indent=2, sort_keys=True) + '\n').encode('utf-8'))
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temporary, path)
+
+
+def _verify_checkpoint_pair_commit(checkpoint_dir: str, step: int) -> None:
+    state_path = os.path.join(checkpoint_dir, f'training-state-{step}.pt')
+    snapshot_path = os.path.join(checkpoint_dir, f'network-snapshot-{step}.pkl')
+    commit_path = os.path.join(checkpoint_dir, f'checkpoint-pair-{step}.json')
+    if not os.path.isfile(state_path) or not os.path.isfile(snapshot_path):
+        raise RuntimeError(f'incomplete checkpoint pair at step {step}')
+    if not os.path.isfile(commit_path):
+        # Compatibility boundary: historical checkpoint pairs predate commit
+        # markers and remain loadable when both conventional files exist.
+        return
+    with open(commit_path, 'r', encoding='utf-8') as handle:
+        payload = json.load(handle)
+    expected = {
+        'schema_version': 1,
+        'global_step': step,
+        'training_state': {
+            'path': os.path.basename(state_path),
+            'sha256': _file_sha256(state_path),
+        },
+        'network_snapshot': {
+            'path': os.path.basename(snapshot_path),
+            'sha256': _file_sha256(snapshot_path),
+        },
+    }
+    if payload != expected:
+        raise ValueError(f'checkpoint pair commit validation failed at step {step}')
 
 class KEYS(str, Enum):
     TIME_DATA = "time/data"
@@ -166,7 +254,10 @@ class BaseTrainer(AbstractTrainer, abc.ABC):
         set_random_seed(self.seed, get_rank())
 
         self.batch_size = cfg['training']['batch_size']
-        self.global_batch_size = self.batch_size * get_world_size() * cfg['loss'].get('n_accum_steps', 1)
+        n_accum_steps = cfg['loss'].get('n_accum_steps', 1)
+        if self.batch_size <= 0 or n_accum_steps <= 0:
+            raise ValueError('batch_size and n_accum_steps must be positive')
+        self.global_batch_size = self.batch_size * get_world_size() * n_accum_steps
         self.report_every_steps = cfg['training']['report_every_steps']
         if self.report_every_steps % self.global_batch_size != 0:
             raise ValueError(f"'report_every_steps' must be a multiple of {self.global_batch_size}, but is {self.report_every_steps}")
@@ -181,12 +272,10 @@ class BaseTrainer(AbstractTrainer, abc.ABC):
         self.save_every_steps = cfg['training']['save_every_steps']
         if self.save_every_steps % self.global_batch_size != 0:
             raise ValueError(f"'save_every_steps' must be a multiple of batch_size, but is {self.save_every_steps}")
-        if self.save_every_steps % self.plot_every_steps != 0:
-            raise ValueError(
-                f"'save_every_steps' must be a multiple of 'plot_every_steps'"
-                f" but given {self.save_every_steps} and {self.plot_every_steps}"
-            )
+        # Checkpoints may be more frequent than expensive preview generation.
         self.max_steps = cfg['training']['max_steps']
+        if self.max_steps <= 0 or self.max_steps % self.global_batch_size:
+            raise ValueError('max_steps must be a positive multiple of global_batch_size')
         self.max_val_batches = cfg['training'].get('max_val_batches', None)
         self.save_eval_to_file = cfg['training'].get('save_eval_to_file', False)
         self.save_first_step = cfg['training'].get('save_first_step', False)
@@ -209,13 +298,26 @@ class BaseTrainer(AbstractTrainer, abc.ABC):
         assert self.ckpt_dir is not None
 
         start_global_step = 0
+        if os.path.isdir(self.ckpt_dir):
+            for entry in os.scandir(self.ckpt_dir):
+                pending = re.fullmatch(r'checkpoint-pair-(\d+)\.pending\.json', entry.name)
+                if not entry.is_file() or pending is None:
+                    continue
+                pending_step = int(pending.group(1))
+                commit_path = os.path.join(self.ckpt_dir, f'checkpoint-pair-{pending_step}.json')
+                if not os.path.isfile(commit_path):
+                    raise RuntimeError(
+                        f'incomplete checkpoint publication at step {pending_step}; '
+                        'refusing to fall back to an older checkpoint'
+                    )
+                _verify_checkpoint_pair_commit(self.ckpt_dir, pending_step)
         # 1. Explicit checkpoint specified
         if (self.cfg['training'].get('checkpoint', None)) is not None:
             ckpt_path = self.cfg['training']['checkpoint']
         # 2. Checkpoint exists in the current experiment directory
         elif os.path.exists(self.ckpt_dir):
             # List available checkpoints
-            pattern = r'training-state-(\d+).pt'
+            pattern = r'training-state-(\d+)\.pt'
             ckpt_fnames = [
                 entry.name for entry in os.scandir(self.ckpt_dir)
                 if entry.is_file() and re.fullmatch(pattern, entry.name)
@@ -224,7 +326,7 @@ class BaseTrainer(AbstractTrainer, abc.ABC):
                 return start_global_step
             ckpt_path = os.path.join(
                 self.ckpt_dir,
-                max(ckpt_fnames, key=lambda x: float(re.fullmatch(pattern, x).group(1))) # type: ignore
+                max(ckpt_fnames, key=lambda x: int(re.fullmatch(pattern, x).group(1))) # type: ignore
             )
         # 3. Checkpoint not present
         else:
@@ -232,6 +334,11 @@ class BaseTrainer(AbstractTrainer, abc.ABC):
 
         # Load the checkpoint.
         if ckpt_path is not None:
+            checkpoint_match = re.fullmatch(r'training-state-(\d+)\.pt', os.path.basename(ckpt_path))
+            if checkpoint_match is not None:
+                _verify_checkpoint_pair_commit(
+                    os.path.dirname(os.path.abspath(ckpt_path)), int(checkpoint_match.group(1))
+                )
             ckpt_data = torch.load(ckpt_path, weights_only=False, map_location="cpu")
             for k, v in self.models.items():
                 self.models[k].load_state_dict(ckpt_data[k]['state_dict'])
@@ -302,20 +409,29 @@ class BaseTrainer(AbstractTrainer, abc.ABC):
             if get_rank() == 0:
                 assert self.ckpt_dir is not None
                 save_file_name = os.path.join(self.ckpt_dir, f"training-state-{self.global_step}.pt")
+                checkpoint_models = self.get_checkpoint_models()
                 save_obj = {
                     k: {"state_dict": v.state_dict()}
-                    for k, v in self.models.items()
+                    for k, v in checkpoint_models.items()
                 } | {
                     "loss_optim": self.loss_optim.state_dict(),
                     "global_step": self.global_step
                 } | self.get_extra_state()
-                torch.save(save_obj, save_file_name)
-                print0(f"Saved checkpoint at '{save_file_name}'")
+                state_path = save_file_name
+                token = uuid.uuid4().hex
+                state_temporary = state_path + '.' + token + '.tmp'
+                # Serialize both files before publishing either. The state file is
+                # the recovery commit point; incomplete temporary files are ignored.
+                with open(state_temporary, 'xb') as handle:
+                    torch.save(save_obj, handle)
+                    handle.flush()
+                    os.fsync(handle.fileno())
 
                 save_obj = {}
-                for mname, model in self.models.items():
+                for mname, model in checkpoint_models.items():
                     try:
-                        save_obj[mname] = copy.deepcopy(model).cpu().eval().requires_grad_(False)
+                        memo = _snapshot_deepcopy_memo(model)
+                        save_obj[mname] = copy.deepcopy(model, memo).cpu().eval().requires_grad_(False)
                     except:
                         print0(mname)
                         print0(model)
@@ -323,8 +439,48 @@ class BaseTrainer(AbstractTrainer, abc.ABC):
                 save_obj["global_step"] = self.global_step + 1
                 save_obj["run_dir"] = self.run_dir
                 save_file_name = os.path.join(self.ckpt_dir, f"network-snapshot-{self.global_step}.pkl")
-                with open(save_file_name, 'wb') as f:
+                snapshot_temporary = save_file_name + '.' + token + '.tmp'
+                with open(snapshot_temporary, 'xb') as f:
                     pickle.dump(save_obj, f)
+                    f.flush()
+                    os.fsync(f.fileno())
+                pending_path = os.path.join(
+                    self.ckpt_dir, f'checkpoint-pair-{self.global_step}.pending.json'
+                )
+                commit_path = os.path.join(
+                    self.ckpt_dir, f'checkpoint-pair-{self.global_step}.json'
+                )
+                published_paths = (state_path, save_file_name, pending_path, commit_path)
+                if any(os.path.exists(path) for path in published_paths):
+                    if os.path.exists(state_temporary):
+                        os.unlink(state_temporary)
+                    if os.path.exists(snapshot_temporary):
+                        os.unlink(snapshot_temporary)
+                    raise FileExistsError(
+                        f'checkpoint step {self.global_step} already has published or pending files'
+                    )
+                _atomic_checkpoint_json(pending_path, {
+                    'schema_version': 1,
+                    'global_step': self.global_step,
+                    'training_state': os.path.basename(state_path),
+                    'network_snapshot': os.path.basename(save_file_name),
+                })
+                os.replace(snapshot_temporary, save_file_name)
+                os.replace(state_temporary, state_path)
+                _atomic_checkpoint_json(commit_path, {
+                    'schema_version': 1,
+                    'global_step': self.global_step,
+                    'training_state': {
+                        'path': os.path.basename(state_path),
+                        'sha256': _file_sha256(state_path),
+                    },
+                    'network_snapshot': {
+                        'path': os.path.basename(save_file_name),
+                        'sha256': _file_sha256(save_file_name),
+                    },
+                })
+                os.unlink(pending_path)
+                print0(f"Saved checkpoint at '{state_path}'")
                 print0(f"Saved network snapshot at '{save_file_name}'")
             barrier()
 
@@ -422,7 +578,7 @@ class BaseTrainer(AbstractTrainer, abc.ABC):
                 v.eval()
             try:
                 val_batch = next(val_loader_iter)
-            except (StopIteration, RuntimeError):
+            except StopIteration:
                 print0(f"Validation finished at step {self.global_step} due to: validation loader exhausted")
                 break
             with valid_timer.measure():  # Validation loss
@@ -469,11 +625,17 @@ class BaseTrainer(AbstractTrainer, abc.ABC):
         self.tb_writer = tb
 
         self.start_global_step = self.maybe_load_checkpoint()
-        if self.start_global_step >= self.max_steps + 1:
+        if self.start_global_step > self.max_steps:
             raise ValueError(
                 f"Given a starting step {self.start_global_step} "
-                f"higher than the max number of steps {self.max_steps + 1}"
+                f"higher than the max number of steps {self.max_steps}"
             )
+
+        if self.start_global_step == self.max_steps:
+            self.global_step = self.start_global_step
+            print0(f'Training already finished at step {self.global_step}')
+            tb.close()
+            return
 
         self.dloaders = self.init_dataloaders(cfg, self.dsets)
         if self.dloaders.get(Datasplit.TRAIN, None) is None:
@@ -499,7 +661,7 @@ class BaseTrainer(AbstractTrainer, abc.ABC):
             for k, v in self.models.items():
                 v.eval()
             with valid_timer.measure():  # Validation loss
-                self.maybe_validate(val_dloader, val_loader_iter)
+                val_loader_iter = self.maybe_validate(val_dloader, val_loader_iter)
             if self.should_report_at_step(self.global_step):  # Report statistics to tensorboard and print
                 training_stats.report(KEYS.TIME_DATA.value, data_timer.cuda_time())
                 training_stats.report(KEYS.TIME_LOSS.value, loss_timer.cuda_time())
@@ -535,6 +697,11 @@ class BaseTrainer(AbstractTrainer, abc.ABC):
 
     def on_train_step_finished(self):
         pass
+
+    def get_checkpoint_models(self) -> Mapping[str, torch.nn.Module]:
+        """Return checkpoint-only model views without changing live training models."""
+        return self.models
+
 
     def get_extra_state(self) -> Dict[str, Any]:
         return {}

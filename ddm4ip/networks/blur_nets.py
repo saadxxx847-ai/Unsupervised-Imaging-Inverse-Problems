@@ -59,7 +59,10 @@ class BlurNetBase(nn.Module, abc.ABC):
         else:
             raise NotImplementedError(degradation_type)
 
-        self.register_load_state_dict_pre_hook(self.fix_state_dict)
+        if hasattr(self, 'register_load_state_dict_pre_hook'):
+            self.register_load_state_dict_pre_hook(self.fix_state_dict)
+        else:
+            self._register_load_state_dict_pre_hook(self.fix_state_dict, with_module=True)
 
     def forward(
         self,
@@ -102,11 +105,14 @@ class BlurNetBase(nn.Module, abc.ABC):
         pass
 
     def fix_state_dict(self, module, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs) -> None:
-        sd_sigma = state_dict["degradation.noise_model.sigma"]
+        key = prefix + 'degradation.noise_model.sigma'
+        if key not in state_dict:
+            return  # Let load_state_dict report missing keys according to strict.
+        sd_sigma = state_dict[key]
         self_sigma = self.degradation.noise_model.sigma
         if sd_sigma.shape != self_sigma.shape:
             print("Warn: modifying noise-model sigma in state dict")
-            state_dict["degradation.noise_model.sigma"] = self_sigma
+            state_dict[key] = self_sigma
 
 
 class FourierEmbedding(torch.nn.Module):
@@ -494,7 +500,7 @@ class ConvSR(nn.Module):
         return out
 
     def get_kernel(self, img, conditioning, **kwargs) -> torch.Tensor:
-        delta = torch.ones((self.kernel_ch,)).cuda()
+        delta = next(self.layers.parameters()).new_ones((self.kernel_ch,))
         delta = delta[None, :, None, None]
         for i, w in enumerate(self.layers.parameters()):
             if i == 0:

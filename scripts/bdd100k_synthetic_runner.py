@@ -15,6 +15,7 @@ import os
 import pickle
 import subprocess
 import sys
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -56,6 +57,26 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
+    """Publish one JSON document without exposing a truncated destination."""
+    path = Path(path)
+    temporary = path.with_name(f"{path.name}.{uuid.uuid4().hex}.tmp")
+    with temporary.open("xb") as handle:
+        handle.write((json.dumps(payload, indent=2, sort_keys=True) + "\n").encode("utf-8"))
+        handle.flush()
+        os.fsync(handle.fileno())
+    # Keep the temporary file on failure: it is evidence of the attempted state
+    # transition while the previous destination remains valid.
+    os.replace(temporary, path)
+
+
+def _append_json_record(path: Path, payload: dict[str, Any]) -> None:
+    with Path(path).open("a", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(payload, sort_keys=True) + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
 
 
 def current_runner_sha256() -> str:
@@ -144,6 +165,17 @@ def validate_spec(spec: dict[str, Any], *, current_host: str, current_python: st
         raise ValueError("oracle evaluation cannot have a seed")
     if stage in {"step2"} and not spec.get("predecessor"):
         raise ValueError("Step 2 requires a verified Step 1 predecessor")
+    if stage == "step2":
+        requested_workers = (spec.get("overrides") or {}).get("training.num_workers")
+        if requested_workers is not None:
+            try:
+                requested_workers = int(requested_workers)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    "Step 2 requires training.num_workers=0 on Windows"
+                ) from exc
+            if requested_workers != 0:
+                raise ValueError("Step 2 requires training.num_workers=0 on Windows")
     if stage == "step3" and variant == "learned" and not spec.get("predecessor"):
         raise ValueError("learned Step 3 requires a same-seed Step 2 predecessor")
     if stage == "step3" and variant == "oracle" and spec.get("predecessor"):
@@ -181,6 +213,10 @@ def validate_spec(spec: dict[str, Any], *, current_host: str, current_python: st
     overrides = spec.get("overrides") or {}
     if not isinstance(overrides, dict) or any(key not in ALLOWED_OVERRIDE_FIELDS for key in overrides):
         raise ValueError("Hydra override is not allowlisted")
+    if stage == 'step2' and overrides.get('training.max_val_batches', 0) != 0:
+        raise ValueError('Step 2 requires training.max_val_batches=0')
+    if stage == 'step2' and 'training.seed' in overrides and overrides['training.seed'] != spec['seed']:
+        raise ValueError('Step 2 training.seed must match the frozen spec seed')
     if stage == "oracle" and mode == "pilot":
         if int(spec.get("expected_manifest_records", -1)) != 16:
             raise ValueError("Oracle pilot requires exactly 16 expected manifest records")
@@ -208,8 +244,9 @@ def reserve_spec(spec: dict[str, Any], *, current_host: str, current_python: str
     (run_root / "environment.json").write_text(json.dumps({
         "host": current_host, "python": str(current_python), "runner_sha256": reserved["runner_sha256"],
     }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    (run_root / "status-history.jsonl").write_text(json.dumps({"status": "RESERVED", "updated_at": _now()}) + "\n", encoding="utf-8")
-    (run_root / "status.json").write_text(json.dumps({"status": "RESERVED", "updated_at": _now()}) + "\n", encoding="utf-8")
+    reserved_status = {"status": "RESERVED", "updated_at": _now()}
+    _append_json_record(run_root / "status-history.jsonl", reserved_status)
+    _atomic_write_json(run_root / "status.json", reserved_status)
     (run_root / "task.log").write_text("reserved; execution has not started\n", encoding="utf-8")
     return run_root
 
@@ -399,6 +436,11 @@ def record_execution_status(run_root: Path, spec: dict[str, Any], status: str, *
     if status not in {"RUNNING", "SUCCESS", "FAILED"}:
         raise ValueError(f"invalid execution status: {status}")
     run_root = Path(run_root)
+    status_path = run_root / "status.json"
+    if status_path.is_file():
+        previous = json.loads(status_path.read_text(encoding="utf-8"))
+        if previous.get("status") in {"SUCCESS", "FAILED"}:
+            raise ValueError("terminal execution status cannot be overwritten")
     payload = {
         "status": status,
         "updated_at": _now(),
@@ -409,16 +451,33 @@ def record_execution_status(run_root: Path, spec: dict[str, Any], status: str, *
         "log_path": str(run_root / "task.log"),
         **extra,
     }
-    with (run_root / "status-history.jsonl").open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(payload, sort_keys=True) + "\n")
-    (run_root / "status.json").write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    _append_json_record(run_root / "status-history.jsonl", payload)
+    _atomic_write_json(status_path, payload)
 
 
 def append_task_log(run_root: Path, message: str) -> None:
     with (Path(run_root) / "task.log").open("a", encoding="utf-8") as handle:
         handle.write(message.rstrip("\n") + "\n")
+
+
+def record_dispatch_failure(spec_or_run_root: Path, error: str) -> None:
+    spec_path, run_root = _spec_path_and_run_root(spec_or_run_root)
+    _require_regular(spec_path, "reserved spec")
+    spec = _load_json(spec_path)
+    if _resolved(Path(spec.get("run_root", ""))) != _resolved(run_root):
+        raise ValueError("reserved spec run_root does not match its directory")
+    message = f"scheduled task dispatch failed: {error}"
+    append_task_log(run_root, message)
+    record_execution_status(
+        run_root,
+        spec,
+        "FAILED",
+        stage=spec.get("stage"),
+        mode=spec.get("mode"),
+        failure_phase="dispatch",
+        exit_code=1,
+        error=message,
+    )
 
 
 def execute_reserved(spec_or_run_root: Path, *, current_runner_sha256: str) -> dict[str, Any]:
@@ -432,9 +491,13 @@ def execute_reserved(spec_or_run_root: Path, *, current_runner_sha256: str) -> d
     if spec.get("runner_sha256") != current_runner_sha256:
         raise ValueError("runner SHA-256 differs from the reserved spec")
     claim = run_root / "execution.claim"
-    if claim.exists():
-        raise FileExistsError(f"execution claim already exists: {claim}")
-    claim.write_text(json.dumps({"claimed_at": _now(), "runner_sha256": current_runner_sha256}) + "\n", encoding="utf-8")
+    status_path = run_root / 'status.json'
+    if status_path.is_file():
+        previous = json.loads(status_path.read_text(encoding='utf-8'))
+        if previous.get('status') in {'SUCCESS', 'FAILED'}:
+            raise ValueError('terminal run cannot be reexecuted; reserve a new authorized run')
+    with claim.open('x', encoding='utf-8') as handle:
+        handle.write(json.dumps({"claimed_at": _now(), "runner_sha256": current_runner_sha256}) + "\n")
     return spec
 
 
@@ -474,7 +537,10 @@ def build_hydra_overrides(
     for key, value in sorted((spec.get("overrides") or {}).items()):
         if key not in ALLOWED_OVERRIDE_FIELDS:
             raise ValueError(f"Hydra override is not allowlisted: {key}")
-        overrides.append(f"{key}={value}")
+        if spec['stage'] != 'step2' or key != 'training.seed':
+            overrides.append(f"{key}={value}")
+    if spec["stage"] == "step2" and "training.num_workers" not in (spec.get("overrides") or {}):
+        overrides.append("training.num_workers=0")
     if spec["stage"] == "oracle" and spec.get("mode") == "pilot":
         overrides.extend([
             "dataset.test.pairs_role=dev_reserve",
@@ -484,6 +550,7 @@ def build_hydra_overrides(
         if not flow_checkpoint:
             raise ValueError("Step 2 requires the verified flow checkpoint")
         overrides.append(f"models.pretrained_flow.path={_slash(flow_checkpoint)}")
+        overrides.append(f"training.seed={int(spec['seed'])}")
     if spec["stage"] == "step3" and spec.get("variant") == "learned":
         if not kernel_snapshot:
             raise ValueError("learned Step 3 requires the verified same-seed kernel snapshot")
@@ -498,6 +565,13 @@ def build_hydra_overrides(
         ])
         if spec["stage"] == "step3" and spec.get("variant") == "learned":
             overrides.append(f"evaluation.step2_seed={int(spec['seed'])}")
+            overrides.append(
+                "evaluation.predecessor_network_snapshot_sha256="
+                + _safe_hash(
+                    (spec.get("predecessor") or {}).get("network_snapshot_sha256"),
+                    "predecessor.network_snapshot_sha256",
+                )
+            )
     return overrides
 
 
@@ -573,7 +647,7 @@ def _load_pickle_with_project_path(path: Path) -> Any:
         sys.path[:] = original_sys_path
 
 
-def verify_checkpoint_pair(pt_path: Path, pkl_path: Path, *, expected_step: int, model_key: str) -> None:
+def verify_checkpoint_pair(pt_path: Path, pkl_path: Path, *, expected_step: int, model_key: str | None = None, model_keys: tuple[str, ...] | None = None) -> None:
     pt_path = Path(pt_path)
     pkl_path = Path(pkl_path)
     if pt_path.name != f"training-state-{expected_step}.pt" or pkl_path.name != f"network-snapshot-{expected_step}.pkl":
@@ -582,20 +656,35 @@ def verify_checkpoint_pair(pt_path: Path, pkl_path: Path, *, expected_step: int,
     _require_regular(pkl_path, "network snapshot")
     import torch
 
-    if model_key not in {"flow_nn", "kernel_nn"}:
+    if model_key is not None and model_keys is not None:
+        raise ValueError("specify model_key or model_keys, not both")
+    required_model_keys = (
+        (model_key,) if model_keys is None and model_key is not None else tuple(model_keys or ())
+    )
+    if not required_model_keys or any(key not in {"flow_nn", "kernel_nn"} for key in required_model_keys):
         raise ValueError("unsupported checkpoint model key")
     pt = torch.load(pt_path, map_location="cpu", weights_only=False)
     pkl = _load_pickle_with_project_path(pkl_path)
+    original_sys_path = list(sys.path)
+    try:
+        if str(PROJECT_ROOT) not in sys.path:
+            sys.path.insert(0, str(PROJECT_ROOT))
+        from ddm4ip.utils.checkpoint_validation import require_finite_tensors
+        require_finite_tensors(pt, 'training-state')
+        require_finite_tensors(pkl, 'network-snapshot')
+    finally:
+        sys.path[:] = original_sys_path
     pt_global_step = _recursive_find(pt, "global_step")
     pkl_global_step = _recursive_find(pkl, "global_step")
     if pt_global_step is None or int(pt_global_step) != expected_step:
         raise ValueError("training-state internal step mismatch")
     if pkl_global_step is None or int(pkl_global_step) != expected_step + 1:
         raise ValueError("network snapshot internal step mismatch")
-    if _recursive_find(pt, model_key) is None:
-        raise ValueError(f"training-state is missing {model_key}")
-    if _recursive_find(pkl, model_key) is None:
-        raise ValueError(f"network snapshot is missing {model_key}")
+    for required_key in required_model_keys:
+        if _recursive_find(pt, required_key) is None:
+            raise ValueError(f"training-state is missing {required_key}")
+        if _recursive_find(pkl, required_key) is None:
+            raise ValueError(f"network snapshot is missing {required_key}")
 
 
 def _safe_relative_checkpoint(value: Any, label: str) -> Path:
@@ -700,7 +789,12 @@ def preflight_benchmark_artifacts(spec: dict[str, Any]) -> dict[str, str]:
 
 
 def verify_evaluation_artifacts(
-    run_root: Path, *, expected_manifest_records: int, expected_hashes: dict[str, str], oracle: bool = False
+    run_root: Path,
+    *,
+    expected_manifest_records: int,
+    expected_hashes: dict[str, str],
+    oracle: bool = False,
+    expected_predecessor_snapshot_sha256: str | None = None,
 ) -> None:
     run_root = Path(run_root)
     output_dir = run_root / "plots"
@@ -722,7 +816,8 @@ def verify_evaluation_artifacts(
     required_row_fields = {
         "prediction_path", "prediction_sha256", "kernel_path", "kernel_sha256",
         "kernel_gt_sha256", "pairs_manifest_sha256", "benchmark_summary_sha256",
-        "solver_config_sha256", "input_metrics", "restored_metrics",
+        "solver_config_sha256", "predecessor_network_snapshot_sha256",
+        "input_metrics", "restored_metrics",
     }
     _finite_numbers(metrics)
     for row in manifest:
@@ -731,6 +826,8 @@ def verify_evaluation_artifacts(
         for key, expected in expected_hashes.items():
             if str(row.get(key, "")).lower() != str(expected).lower():
                 raise ValueError(f"evaluation hash mismatch: {key}")
+        if row.get("predecessor_network_snapshot_sha256") != expected_predecessor_snapshot_sha256:
+            raise ValueError("evaluation predecessor snapshot hash mismatch")
         metric_row = metric_by_source[row["source_id"]]
         comparable_manifest_row = dict(row)
         comparable_manifest_row.pop("schema_version", None)
@@ -753,6 +850,7 @@ def verify_evaluation_artifacts(
     required_summary_fields = {
         "records", "failures", "source_set_sha256", "pairs_manifest_sha256",
         "benchmark_summary_sha256", "kernel_gt_sha256", "solver_config_sha256",
+        "predecessor_network_snapshot_sha256",
         "statistics", "mean", "manifest_jsonl_sha256", "metrics_jsonl_sha256",
     }
     if not required_summary_fields.issubset(summary):
@@ -762,6 +860,8 @@ def verify_evaluation_artifacts(
     for key, expected in expected_hashes.items():
         if str(summary[key]).lower() != str(expected).lower():
             raise ValueError(f"summary hash mismatch: {key}")
+    if summary.get("predecessor_network_snapshot_sha256") != expected_predecessor_snapshot_sha256:
+        raise ValueError("summary predecessor snapshot hash mismatch")
     if summary["source_set_sha256"] != _source_set_sha256(set(source_ids)):
         raise ValueError("summary source set hash mismatch")
     if summary["solver_config_sha256"] != manifest[0]["solver_config_sha256"]:
@@ -788,6 +888,20 @@ def verify_evaluation_artifacts(
 
 
 def postflight_stage_artifacts(spec: dict[str, Any], run_root: Path) -> None:
+    if spec['stage'] in {'step1', 'step2'}:
+        default_steps = {'step1': 5 * 1024 * 1024, 'step2': 1030 * 1024}
+        step = int((spec.get('overrides') or {}).get('training.max_steps', default_steps[spec['stage']]))
+        model_keys = ('flow_nn',) if spec['stage'] == 'step1' else ('flow_nn', 'kernel_nn')
+        checkpoints = Path(run_root) / 'checkpoints'
+        pt = checkpoints / f'training-state-{step}.pt'
+        pkl = checkpoints / f'network-snapshot-{step}.pkl'
+        verify_checkpoint_pair(pt, pkl, expected_step=step, model_keys=model_keys)
+        artifacts = {'stage': spec['stage'], 'global_step': step,
+            'training_state': {'path': str(pt), 'sha256': _sha256(pt)},
+            'network_snapshot': {'path': str(pkl), 'sha256': _sha256(pkl)}}
+        with (Path(run_root) / 'artifacts.json').open('x', encoding='utf-8') as handle:
+            json.dump(artifacts, handle, indent=2, sort_keys=True)
+        return
     if spec["stage"] not in {"oracle", "step3"}:
         return
     verify_evaluation_artifacts(
@@ -799,6 +913,14 @@ def postflight_stage_artifacts(spec: dict[str, Any], run_root: Path) -> None:
             "kernel_gt_sha256": spec["benchmark_hashes"]["kernel"],
         },
         oracle=spec["stage"] == "oracle" or spec.get("variant") == "oracle",
+        expected_predecessor_snapshot_sha256=(
+            None
+            if spec["stage"] == "oracle" or spec.get("variant") == "oracle"
+            else _safe_hash(
+                (spec.get("predecessor") or {}).get("network_snapshot_sha256"),
+                "predecessor.network_snapshot_sha256",
+            )
+        ),
     )
 
 
@@ -812,13 +934,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--spec", type=Path, required=True)
     parser.add_argument("--current-host", default=os.environ.get("COMPUTERNAME", ""))
     parser.add_argument("--current-python", default=str(FIXED_PYTHON))
+    parser.add_argument("--error", default="unspecified launcher failure")
     args = parser.parse_args(argv)
     if args.action == "prepare":
         reserve_spec(_load_json(args.spec), current_host=args.current_host, current_python=args.current_python)
         return 0
     if args.action == "dispatch-failed":
-        _, run_root = _spec_path_and_run_root(args.spec)
-        (run_root / "status.json").write_text(json.dumps({"status": "FAILED", "updated_at": _now()}) + "\n", encoding="utf-8")
+        record_dispatch_failure(args.spec, args.error)
         return 0
     spec = execute_reserved(args.spec, current_runner_sha256=current_runner_sha256())
     _, run_root = _spec_path_and_run_root(args.spec)

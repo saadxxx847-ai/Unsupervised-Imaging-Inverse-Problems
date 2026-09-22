@@ -78,7 +78,7 @@ def run(argv):
     parser = argparse.ArgumentParser(argv[0], description="Process the DDPD dataset for Diff4IP training. Note that the script needs around 32GB of RAM to complete the corruption process successfully.")
     parser.add_argument("--input-path", help="Path to original DDPD zip-file (`dd_pd_dataset_canon.zip`). This can be downloaded following the instructions here: https://github.com/Abdullah-Abuolaim/defocus-deblurring-dual-pixel.")
     parser.add_argument("--output-path", help="A directory where all FFHQ subsets (at 256x256 resolution) needed for Diff4IP will be placed")
-    parser.add_argument("--psf", help="Path to the space-varying PSF. Generate this using the `get_spacevarying_psf.py` script", required=False, defualt=None)
+    parser.add_argument("--psf", help="Path to the space-varying PSF. Generate this using the `get_spacevarying_psf.py` script", required=False, default=None)
     args = parser.parse_args()
 
     out_path = Path(args.output_path)

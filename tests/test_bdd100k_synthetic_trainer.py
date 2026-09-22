@@ -74,6 +74,7 @@ class SyntheticTrainerTests(unittest.TestCase):
             kernel_gt_path=kernel_gt,
             expected_count=expected_count,
             pairs_manifest_sha256="a" * 64,
+            predecessor_network_snapshot_sha256=("f" * 64 if variant == "learned" else None),
             benchmark_summary_sha256="b" * 64,
         )
         trainer.expected_pairs_manifest_sha256 = "a" * 64

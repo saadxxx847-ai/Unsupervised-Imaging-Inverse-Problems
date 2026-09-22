@@ -1,3 +1,4 @@
+import copy
 import os
 import warnings
 
@@ -117,6 +118,13 @@ class DiffinstructOpTrainer(BaseTrainer):
             "prtr_flow_nn": prtr_flow_nn,
             "kernel_nn": kernel_nn,
         }
+
+    def get_checkpoint_models(self):
+        checkpoint_models = dict(self.models)
+        canonical_flow = copy.deepcopy(self.models["aux_flow_nn"])
+        canonical_flow = canonical_flow.cpu().eval().requires_grad_(False)
+        checkpoint_models["flow_nn"] = canonical_flow
+        return checkpoint_models
 
     def init_loss(self, cfg, models):
         loss = DiffInstructOnY(cfg, **models)

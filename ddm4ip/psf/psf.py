@@ -38,8 +38,14 @@ def get_psf_at_pos(
     output: B, kc, kh, kw
     """
     # Need to put PSFs on a grid given by x, y
-    x = torch.unique(grid[:, 0])
-    y = torch.unique(grid[:, 1])
+    x, ix = torch.unique(grid[:, 0], sorted=True, return_inverse=True)
+    y, iy = torch.unique(grid[:, 1], sorted=True, return_inverse=True)
+    # grid_sample expects rows=y, columns=x. Input grid order is arbitrary.
+    linear = iy * len(x) + ix
+    order = torch.argsort(linear)
+    if len(grid) != len(x) * len(y) or not torch.equal(linear[order], torch.arange(len(grid), device=grid.device)):
+        raise ValueError('PSF interpolation requires a complete Cartesian grid without duplicates')
+    psfs = psfs[order]
 
     ## `grid_sample` version - backward a lot faster but not thoroughly checked for correctness
     psf_shape = psfs.shape[1:]
@@ -77,13 +83,13 @@ class PSF(torch.nn.Module):
         self.register_buffer("loc", positions)
         self.register_buffer("psfs", norm_sum_to_one(kernels))
 
-        self.rot_psfs = None
+        self.register_buffer('rot_psfs', None)
         if do_rotation:
             radii, angles = cart2pol(self.loc[:, 0], self.loc[:, 1], 2, 2)
             rot_psfs = torch.stack([
                 rotate_patch(psf, math.degrees(angle)) for psf, angle in zip(self.psfs, angles)
             ], dim=0)
-            self.register_buffer("rot_psfs", norm_sum_to_one(rot_psfs))
+            self.rot_psfs = norm_sum_to_one(rot_psfs)
 
     def __len__(self):
         return self.N

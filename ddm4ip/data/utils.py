@@ -120,8 +120,8 @@ class ReplaceRandomLocMapTransform(v2.Transform):
         ch, height, width = inpt.shape[-3], inpt.shape[-2], inpt.shape[-1]
         # Replace the old map with a new one
         inpt = inpt[..., :ch-2, :, :]
-        top = torch.randint(0, self.full_img_size[0] - height, size=(1, ))
-        left = torch.randint(0, self.full_img_size[1] - width, size=(1, ))
+        top = torch.randint(0, self.full_img_size[0] - height + 1, size=(1, ))
+        left = torch.randint(0, self.full_img_size[1] - width + 1, size=(1, ))
         sub_map = self.full_map[:, top:top + height, left: left + width]
         if inpt.dim() == 4:
             sub_map = sub_map.expand(inpt.shape[0], *sub_map.shape)
@@ -139,8 +139,8 @@ class AddRandomLocMapTransform(v2.Transform):
 
     def _transform(self, inpt: Any, params: Dict[str, Any]) -> Any:
         height, width = inpt.shape[-2], inpt.shape[-1]
-        top = torch.randint(0, self.full_img_size[0] - height, size=(1, ))
-        left = torch.randint(0, self.full_img_size[1] - width, size=(1, ))
+        top = torch.randint(0, self.full_img_size[0] - height + 1, size=(1, ))
+        left = torch.randint(0, self.full_img_size[1] - width + 1, size=(1, ))
         sub_map = self.full_map[:, top:top + height, left: left + width]
         if inpt.dim() == 4:
             sub_map = sub_map.expand(inpt.shape[0], *sub_map.shape)

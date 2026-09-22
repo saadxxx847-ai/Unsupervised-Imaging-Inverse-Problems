@@ -38,5 +38,17 @@ $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument (
     "-NoLogo -NoProfile -NonInteractive -File `"$runWrapper`" -Action execute -SpecPath `"$reservedSpec`""
 )
 $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
-Register-ScheduledTask -TaskName $TaskName -Action $action -Principal $principal -Description 'BDD100K synthetic benchmark isolated stage'
-Start-ScheduledTask -TaskName $TaskName
+$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+try {
+    Register-ScheduledTask -TaskName $TaskName -Action $action -Principal $principal -Settings $settings -Description 'BDD100K synthetic benchmark isolated stage'
+    Start-ScheduledTask -TaskName $TaskName
+}
+catch {
+    $dispatchMessage = "scheduled task registration/start failed: $($_.Exception.Message)"
+    powershell.exe -NoLogo -NoProfile -NonInteractive -File $runWrapper -Action dispatch-failed -SpecPath $reservedSpec -FailureMessage $dispatchMessage
+    $dispatchExitCode = $LASTEXITCODE
+    if ($dispatchExitCode -ne 0) {
+        throw "$dispatchMessage; dispatch-failed recording also failed with exit code $dispatchExitCode"
+    }
+    throw $dispatchMessage
+}

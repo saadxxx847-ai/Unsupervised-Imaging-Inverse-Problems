@@ -249,7 +249,7 @@ class BaseImageFolderDataset(torch.utils.data.Dataset):
         return len(self.raw_idx)
 
     def __getitem__(self, idx):
-        raw_idx = self.raw_idx[idx]
+        raw_idx = int(self.raw_idx[idx])
         image = self.img_cache.get(raw_idx, None)
         if image is None:
             image = self.img_files[raw_idx].load_raw_img()

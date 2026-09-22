@@ -42,7 +42,10 @@ def analyze_snapshot(
     kernel_gt_sha256: str,
     output: Path,
     repository_root: Path,
+    *, step2_seed: int,
 ) -> dict[str, object]:
+    if type(step2_seed) is not int or step2_seed not in range(5):
+        raise ValueError('step2_seed must be one of 0..4')
     if output.exists():
         raise FileExistsError(output)
     snapshot = Path(snapshot)
@@ -64,6 +67,7 @@ def analyze_snapshot(
     truth = torch.load(kernel_gt, map_location="cpu", weights_only=True)
     metrics = compute_kernel_metrics(estimated, truth)
     result = {
+        "step2_seed": step2_seed,
         "snapshot": str(snapshot),
         "snapshot_sha256": snapshot_sha256,
         "global_step": expected_global_step,
@@ -87,6 +91,7 @@ def main() -> int:
     parser.add_argument("--kernel-gt", type=Path, required=True)
     parser.add_argument("--kernel-gt-sha256", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--step2-seed", type=int, choices=range(5), required=True)
     parser.add_argument("--repository-root", type=Path, default=Path(__file__).resolve().parents[1])
     args = parser.parse_args()
     analyze_snapshot(
@@ -97,6 +102,7 @@ def main() -> int:
         args.kernel_gt_sha256,
         args.output,
         args.repository_root,
+        step2_seed=args.step2_seed,
     )
     return 0
 

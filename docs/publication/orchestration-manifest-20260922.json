@@ -1,0 +1,52 @@
+[
+    {
+        "path":  "bdd100k_runner.py",
+        "bytes":  22015,
+        "sha256":  "b66e7504408815f50c015224420fe4286c75df6dc3c71bdf4163d770853d08e0"
+    },
+    {
+        "path":  "run_bdd100k_stage.ps1",
+        "bytes":  904,
+        "sha256":  "426d2653918d7325804e3dd555ced1d376d42b3bbf29c3342dd06e3cbcef7cc0"
+    },
+    {
+        "path":  "run_bdd100k_synthetic_stage.ps1",
+        "bytes":  2485,
+        "sha256":  "38f5a86d85d075d41d36dc7887939a898bebfb796659bf6e666b881376649079"
+    },
+    {
+        "path":  "runner_fixture.py",
+        "bytes":  981,
+        "sha256":  "9a3251a3460c4c2ed26c43fedb5e22a9e71e6af0b0acf3da7313c3ea355634f4"
+    },
+    {
+        "path":  "start_bdd100k_synthetic_task.ps1",
+        "bytes":  2576,
+        "sha256":  "a5f76928f56ee2bc5164bdf50d8628cebfc7d368f1bcb286af0139e78d9b3ce1"
+    },
+    {
+        "path":  "start_bdd100k_task.ps1",
+        "bytes":  2775,
+        "sha256":  "2968359f09d46f05268dde7b8ab327b310386b79fcdc60355e6e3ea7293cabe8"
+    },
+    {
+        "path":  "step1_resume_watchdog.ps1",
+        "bytes":  7441,
+        "sha256":  "45328e451b1fe8fb8387e29a12a2cfcb965e056b789f3f27ccd6b461de92453c"
+    },
+    {
+        "path":  "step-spec.schema.json",
+        "bytes":  1754,
+        "sha256":  "2b542cabd4fcac22de8dba9bbe361d013db423253c5d39c31fd6a4ca0723082c"
+    },
+    {
+        "path":  "synthetic-step-spec.schema.json",
+        "bytes":  2502,
+        "sha256":  "4712125719dbe2bfe255d420c7c275bbf93a6c7daf7c627a073c0e096e8682c8"
+    },
+    {
+        "path":  "watch_bdd100k_step2_full.ps1",
+        "bytes":  1766,
+        "sha256":  "e2c18ff02d335a68135e12bf489ff3d5d16485d740ab7bc982e7ea756524ff2c"
+    }
+]

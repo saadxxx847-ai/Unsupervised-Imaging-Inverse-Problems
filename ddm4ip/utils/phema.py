@@ -50,6 +50,8 @@ class PowerFunctionEMA:
         return dict(stds=self.stds, emas=[ema.state_dict() for ema in self.emas])
 
     def load_state_dict(self, state):
+        if list(state['stds']) != list(self.stds) or len(state['emas']) != len(self.emas):
+            raise ValueError('EMA checkpoint trajectories must match configured stds and count')
         self.stds = state['stds']
         for ema, s_ema in zip(self.emas, state['emas']):
             ema.load_state_dict(s_ema)

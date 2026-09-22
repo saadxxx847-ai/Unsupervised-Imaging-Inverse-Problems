@@ -79,6 +79,8 @@ def compute_image_metrics(reference: torch.Tensor, estimate: torch.Tensor, lpips
         estimate = estimate[0]
     if reference.ndim != 3 or estimate.ndim != 3 or reference.shape != estimate.shape:
         raise ValueError("reference and estimate must have equal CHW image shapes")
+    if not torch.isfinite(reference).all() or not torch.isfinite(estimate).all():
+        raise ValueError('image metrics require finite pixels before clamping')
     reference = reference.detach().cpu().float().clamp(0, 1)
     estimate = estimate.detach().cpu().float().clamp(0, 1)
     try:
@@ -138,6 +140,7 @@ class BenchmarkMetricWriter:
         *,
         pairs_manifest_sha256: str,
         benchmark_summary_sha256: str,
+        predecessor_network_snapshot_sha256: str | None = None,
     ):
         self.output_dir = Path(output_dir)
         if self.output_dir.exists() and any(self.output_dir.iterdir()):
@@ -155,6 +158,15 @@ class BenchmarkMetricWriter:
             raise ValueError("learned records require a Step 2 seed in 0..4")
         if variant not in {"oracle", "learned"}:
             raise ValueError("variant must be oracle or learned")
+        if variant == "oracle":
+            if predecessor_network_snapshot_sha256 is not None:
+                raise ValueError("oracle records cannot carry a predecessor snapshot hash")
+            self.predecessor_network_snapshot_sha256 = None
+        else:
+            self.predecessor_network_snapshot_sha256 = _safe_sha(
+                predecessor_network_snapshot_sha256,
+                "predecessor_network_snapshot_sha256",
+            )
         self.solver_config_sha256 = _safe_sha(solver_config_sha256, "solver_config_sha256")
         self.kernel_gt_path = Path(kernel_gt_path)
         if not self.kernel_gt_path.is_file():
@@ -233,6 +245,7 @@ class BenchmarkMetricWriter:
             "kernel_gt_sha256": self.kernel_gt_sha256,
             "pairs_manifest_sha256": self.pairs_manifest_sha256,
             "benchmark_summary_sha256": self.benchmark_summary_sha256,
+            "predecessor_network_snapshot_sha256": self.predecessor_network_snapshot_sha256,
             "input_metrics": input_metrics,
             "restored_metrics": restored_metrics,
         }
@@ -253,6 +266,7 @@ class BenchmarkMetricWriter:
             "kernel_gt_sha256": self.kernel_gt_sha256,
             "pairs_manifest_sha256": self.pairs_manifest_sha256,
             "benchmark_summary_sha256": self.benchmark_summary_sha256,
+            "predecessor_network_snapshot_sha256": self.predecessor_network_snapshot_sha256,
         }.items():
             if row.get(key) != expected:
                 raise ValueError(f"record {key} mismatch")
@@ -312,6 +326,7 @@ class BenchmarkMetricWriter:
             "benchmark_summary_sha256": self.benchmark_summary_sha256,
             "kernel_gt_sha256": self.kernel_gt_sha256,
             "solver_config_sha256": self.solver_config_sha256,
+            "predecessor_network_snapshot_sha256": self.predecessor_network_snapshot_sha256,
             "statistics": stats,
             "mean": means,
             "manifest_jsonl_sha256": _sha256(self.manifest_path),
@@ -349,6 +364,7 @@ def verify_summary_against_jsonl(summary_path: Path) -> dict[str, Any]:
     required_summary = {
         "records", "failures", "source_set_sha256", "pairs_manifest_sha256",
         "benchmark_summary_sha256", "kernel_gt_sha256", "solver_config_sha256",
+        "predecessor_network_snapshot_sha256",
         "statistics", "mean", "manifest_jsonl_sha256", "metrics_jsonl_sha256",
     }
     if not required_summary.issubset(summary):
@@ -380,10 +396,23 @@ def verify_summary_against_jsonl(summary_path: Path) -> dict[str, Any]:
             if not artifact.is_file() or _sha256(artifact) != str(row.get(key.replace("_path", "_sha256"), "")).lower():
                 raise ValueError(f"{key} artifact or SHA-256 is invalid")
         metric_row = metrics_by_id[source_id]
+        manifest_payload = dict(row)
+        manifest_payload.pop('schema_version', None)
+        metric_payload = dict(metric_row)
+        metric_payload.pop('schema_version', None)
+        if manifest_payload != metric_payload:
+            raise ValueError('manifest and metrics rows differ')
+        for key in (
+            'experiment_id', 'variant', 'step2_seed',
+            'predecessor_network_snapshot_sha256',
+        ):
+            if row.get(key) != summary.get(key):
+                raise ValueError(f'row {key} disagrees with summary')
         for key in (
             "prediction_path", "prediction_sha256", "kernel_path", "kernel_sha256",
             "solver_config_sha256", "kernel_gt_sha256", "pairs_manifest_sha256",
             "benchmark_summary_sha256",
+            "predecessor_network_snapshot_sha256",
         ):
             if row.get(key) != metric_row.get(key):
                 raise ValueError(f"manifest and metrics disagree on {key}")
@@ -393,6 +422,12 @@ def verify_summary_against_jsonl(summary_path: Path) -> dict[str, Any]:
     source_set_sha = _source_set_sha256(set(manifest_by_id))
     if source_set_sha != summary["source_set_sha256"]:
         raise ValueError("source_set_sha256 mismatch")
+    predecessor_hash = summary.get("predecessor_network_snapshot_sha256")
+    if summary.get("variant") == "oracle":
+        if predecessor_hash is not None:
+            raise ValueError("oracle summary cannot carry a predecessor snapshot hash")
+    elif summary.get("variant") == "learned":
+        _safe_sha(predecessor_hash, "predecessor_network_snapshot_sha256")
     recomputed: dict[str, dict[str, float]] = {}
     means: dict[str, float] = {}
     for name in SUMMARY_METRICS:
@@ -446,19 +481,25 @@ def aggregate_summaries(
         if item.get("variant") != "learned":
             raise ValueError("learned summary has wrong variant")
 
+    learned_by_seed = {item["step2_seed"]: item for item in learned}
+
     kernel_results = []
     for index, path in enumerate(kernel_paths):
         payload = json.loads(Path(path).read_text(encoding="utf-8"))
         _finite_payload(payload)
-        for key in ("kernel_psnr", "kernel_ncc"):
+        for key in ("kernel_psnr", "kernel_ncc", "snapshot_sha256"):
             if key not in payload:
                 raise ValueError(f"kernel analysis is missing {key}")
-        if payload.get("step2_seed", index) != index:
+        if type(payload.get("step2_seed")) is not int or payload["step2_seed"] != index:
             raise ValueError("kernel analysis seed order does not match learned summaries")
-        if payload.get("kernel_gt_sha256") not in {None, oracle["kernel_gt_sha256"]}:
+        if payload.get("kernel_gt_sha256") != oracle["kernel_gt_sha256"]:
             raise ValueError("kernel analysis true-kernel hash mismatch")
+        snapshot_sha256 = _safe_sha(payload.get("snapshot_sha256"), "snapshot_sha256")
+        if snapshot_sha256 != learned_by_seed[index]["predecessor_network_snapshot_sha256"]:
+            raise ValueError("kernel analysis snapshot does not match learned evaluation predecessor")
         kernel_results.append({
             "step2_seed": index,
+            "snapshot_sha256": snapshot_sha256,
             "kernel_psnr": float(payload["kernel_psnr"]),
             "kernel_ncc": float(payload["kernel_ncc"]),
         })

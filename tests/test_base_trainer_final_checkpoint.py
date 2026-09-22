@@ -124,5 +124,35 @@ class BaseTrainerFinalCheckpointTests(unittest.TestCase):
         self.assertEqual(restored.loss_optim.completed_steps, 4)
 
 
+    def test_periodic_saves_can_precede_first_plot_and_restore(self):
+        root = Path(tempfile.mkdtemp(prefix="base-frequent-checkpoint-", dir=RUNTIME_TEMP))
+        print(f"Retained frequent-checkpoint fixture root: {root}")
+        cfg = self.make_cfg(root)
+        cfg.training.save_every_steps = 2
+        cfg.training.max_steps = 6
+        trainer = _TerminalCheckpointTrainer()
+        trainer.train(cfg)
+        checkpoint_dir = root / cfg.exp_name / "checkpoints"
+        self.assertEqual(
+            sorted(p.name for p in checkpoint_dir.glob("training-state-*.pt")),
+            ["training-state-2.pt", "training-state-4.pt", "training-state-6.pt"],
+        )
+        for step in (2, 4, 6):
+            state = torch.load(checkpoint_dir / f"training-state-{step}.pt", weights_only=False, map_location="cpu")
+            with (checkpoint_dir / f"network-snapshot-{step}.pkl").open("rb") as handle:
+                snapshot = dill.load(handle)
+            self.assertEqual(state["global_step"], step)
+            self.assertEqual(snapshot["global_step"], step + 1)
+            self.assertEqual(state["loss_optim"]["completed_steps"], step // 2)
+        cfg.training.checkpoint = str(checkpoint_dir / "training-state-6.pt")
+        restored = _TerminalCheckpointTrainer()
+        restored.cfg = cfg
+        restored.init_train_info(cfg)
+        restored.models = restored.init_models(cfg, {}, restored.device)
+        restored.loss_optim = restored.init_loss(cfg, restored.models)
+        self.assertEqual(restored.maybe_load_checkpoint(), 6)
+        self.assertEqual(restored.loss_optim.completed_steps, 3)
+
+
 if __name__ == "__main__":
     unittest.main()

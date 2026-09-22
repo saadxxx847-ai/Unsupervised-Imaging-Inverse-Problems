@@ -5,6 +5,7 @@ from pathlib import Path
 import math
 import os
 import pickle
+import sys
 import warnings
 
 from matplotlib import pyplot as plt
@@ -37,6 +38,17 @@ def _file_sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+def _load_pickle_with_project_path(path: Path):
+    original_sys_path = list(sys.path)
+    project_root = str(Path(__file__).resolve().parents[2])
+    try:
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
+        with Path(path).open("rb") as handle:
+            return pickle.load(handle)
+    finally:
+        sys.path[:] = original_sys_path
 
 
 class DeepinvDenoiserTrainer(BaseTrainer):
@@ -164,9 +176,8 @@ class DeepinvDenoiserTrainer(BaseTrainer):
                     f"Cannot load degradation model from '{pert_path}'. "
                     "The file must be a pickle (network-snapshot) file."
                 )
-            with open(pert_path, "rb") as fh:
-                pretr_data = pickle.load(fh)
-                kernel_nn = pretr_data["kernel_nn"]
+            pretr_data = _load_pickle_with_project_path(Path(pert_path))
+            kernel_nn = pretr_data["kernel_nn"]
             models["kernel_nn"] = kernel_nn.to(device)
         else:
             print("No kernel-NN loaded. Will use the default degradation!")
@@ -281,6 +292,9 @@ class DeepinvDenoiserTrainer(BaseTrainer):
             expected_count = evaluation.get("expected_records")
             pairs_manifest_sha256 = evaluation.get("pairs_manifest_sha256")
             benchmark_summary_sha256 = evaluation.get("benchmark_summary_sha256")
+            predecessor_network_snapshot_sha256 = evaluation.get(
+                "predecessor_network_snapshot_sha256", None
+            )
             if (
                 variant not in {"oracle", "learned"}
                 or kernel_gt_path is None
@@ -314,6 +328,7 @@ class DeepinvDenoiserTrainer(BaseTrainer):
                 expected_count=int(expected_count),
                 pairs_manifest_sha256=str(pairs_manifest_sha256),
                 benchmark_summary_sha256=str(benchmark_summary_sha256),
+                predecessor_network_snapshot_sha256=predecessor_network_snapshot_sha256,
             )
             claimed_kernel_hash = evaluation.get("kernel_gt_sha256", None)
             if claimed_kernel_hash is not None and self.metric_writer.kernel_gt_sha256.lower() != str(claimed_kernel_hash).lower():
@@ -373,7 +388,9 @@ class DeepinvDenoiserTrainer(BaseTrainer):
                 val_batch.corrupt[index], val_batch.clean[index]
             )
             prediction_tensor = pred_img[index].detach().cpu()
-            kernel_tensor = filters[:1].detach().cpu() if filters.shape[0] == 1 else filters[index:index + 1].detach().cpu()
+            # Quantitative recording enforces batch_size=1; all leading filters
+            # belong to this image's shared/per-tile geometry.
+            kernel_tensor = filters.detach().cpu()
             if not write_img_pt(prediction_tensor, prediction_path):
                 raise IOError(f"failed to write {prediction_path}")
             with kernel_path.open("xb") as handle:
@@ -470,7 +487,8 @@ class DeepinvDenoiserTrainer(BaseTrainer):
             with (output_dir / kernel_name).open("xb") as fh:
                 torch.save(filters, fh)
             for i, name in enumerate(image_names):
-                write_img_pt(img_batch[i], str(output_dir / name))
+                if not write_img_pt(img_batch[i], str(output_dir / name)):
+                    raise IOError(f'failed to write {output_dir / name}')
             if records:
                 with (output_dir / "manifest.jsonl").open("a", encoding="utf-8") as fh:
                     for record in records:

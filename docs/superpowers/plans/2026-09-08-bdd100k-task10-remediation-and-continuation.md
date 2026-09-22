@@ -1,5 +1,8 @@
 # BDD100K Task 10 前置修正与后续执行总计划
 
+> **最新状态（2026-09-19，优先于下文较早的当前总状态）：** Step1 full b16 async 在本轮唯一检查时仍运行；本次全项目审查已在独立副本修复27类问题，114项验收中109通过、5项GPU跳过。补丁尚未部署，现有训练未被干预。下一步仍是新对话授权full终态独立验收；部署、Step2/3与评估各需另行授权。详见本文末尾的2026-09-19全项目审查交接及审查根 audit-report.md。较早b32/full未准入文字仅保留历史语境。
+
+
 > **给后续执行者：** 必须逐项执行本计划，并使用 `executing-plans`、`test-driven-development`、`systematic-debugging` 和 `verification-before-completion`。项目规则禁止默认启用多代理；除非用户在确确授权，否则不得派生子代理。所有复选框都是状态记录，不构成训练、下载、评估或计划任务授权。
 
 **目标：** 修复 Task 10 Oracle 前置代码、synthetic runner、指标工件和计划任务 wrapper 的已确认缺陷；完成无训练验收后，按独立授权依次通过 AlexNet 权重门、Task 10 Oracle 16 图门，再进入 Task 11。
@@ -606,3 +609,76 @@ Phase C / Task 10 Oracle GPU pilot 已正式关闭；Task 11 仍需用户在新�
 - [ ] Independent terminal acceptance of the existing b16 formal run remains pending. The publication-time scheduler snapshot was Ready / LastTaskResult=0; this alone does not certify the formal checkpoint. Do not equate the user's reported network interruption with proven training failure.
 - [ ] Next conversation requires explicit authorization for read-only b16 formal acceptance: task/processes, status/history/log, frozen Scheme A configuration, final checkpoint pair SHA-256, internal steps 5242880/5242881, flow_nn keys, and all tensor finiteness. Keep the existing run root and all historical evidence unchanged.
 - [ ] Step 2, Step 3, formal evaluation, data processing, weight downloads, new tasks, and restarted/resumed training remain separately authorized. This publication does not grant those permissions.
+
+
+## 2026-09-18—19：Step 1 full 原生 CUDA 崩溃诊断、修复与独立重启
+
+- 本轮授权仅为诊断并修复失败的 Step 1 full 后重启。完整启动核验、已批准的 2026-09-06 设计和实施计划、b16 fallback amendment/plan 已阅读；远端日志比本机控制日志新，以远端为准。本机 WORKLOG 未更新，远端 Git 仅只读检查，已有暂存和未提交修改保留。9 月 18 日因用量上限暂停时尚未启动新任务；9 月 19 日恢复后重新核对主机 DESKTOP-KBM1345、任务/进程及文件哈希，确认没有并发训练，修复文件和冻结 spec 未发生变化。
+- 已证实的失败：旧运行根 `D:\DDM4IP-runtime\experiments\bdd100k-synthetic-motionblur-v1-step1-full-b16-cp-20260917` 于 2026-09-17 21:04 失败，子进程退出码 `3221225477 = 0xC0000005`。Windows Application Event 1000 将 PID 22320 的异常定位到固定环境 `torch\lib\c10_cuda.dll`，偏移 `0x1f13d`；scheduler 最后结果 `4294967295`。status/history 为 RESERVED -> RUNNING -> FAILED，没有重复终态。机器最近启动时间为 9 月 16 日，当时未重启，不能归因为 SSH 断开或断电。
+- TensorBoard 最后记录的 global_step 为 `131072`（1,024 次完整更新）、loss 约 `0.10066947`，张量日志未显示非有限 loss；约 15 分钟后崩溃。位置接近首次预览生成，但没有 dump/调用栈能证明预览是触发原因。故障指令位于原生 CUDA 分配统计相关区域；不能进一步宣称已证明驱动缺陷、OOM 或特定 PyTorch bug。旧保存间隔 1048576 尚未到达，因此没有可恢复的正式检查点，本次必须从 0 开始。
+- 修复：仅对 Step 1 full 进程设置 `PYTORCH_CUDA_ALLOC_CONF=backend:cudaMallocAsync`，作为绕开 native allocator 崩溃路径的工作方案；启用 `PYTHONUNBUFFERED=1`、`PYTHONFAULTHANDLER=1`，并记录 `process-policy.json`。未升级/安装 PyTorch、CUDA、驱动或其他依赖，未修改系统或用户全局环境。cudaMallocAsync 下部分 PyTorch allocator 显存统计不具可比性，不能把统计值 0 当作无显存使用。
+- BaseTrainer 只解除保存间隔必须为绘图间隔倍数的限制，仍要求与 global batch 对齐，保留原有周期保存与强制终点保存。新 `save_every_steps=16384`，report 16384、plot 131072 不变。完整预算仍为 Scheme A：batch 16、accum 8、global batch 128、seed 42、max_steps 5242880、40960 次完整更新；数据、模型、损失、无配对监督和验证边界未变。预计 320 对检查点约 26.92 GB，启动前 D 盘可用约 115.13 GB。
+- 测试先行证据：新增频繁保存/恢复测试在旧实现下因 save/plot 约束失败，修复后通过；恢复脚本新增试运行不移动 claim、FAILED 不重执行、SUCCESS 不重执行测试，旧实现前两项失败，修复后通过。相关 35 项 unittest 在远端固定 Python 下通过（10.798 秒，退出码 0），三个 PowerShell 脚本解析通过。额外 GPU 无优化器更新检查实际使用 Torch 2.4.1+cu118、cudaMallocAsync、b16 前后向和 16 张/32 步生成预览，非零 loss、梯度和输出有限，退出码 0。只读探针加载的是已验收 b16 pilot 权重，SHA-256 `C65555B401385D7CFD92080A0716A5434C45C05B1A1F165DB81CC0138664F5C2`；该权重未注入新 full，不能把探针当作训练产物。上述检查不能替代长时间稳定性或 full 终态验收。
+- 运行器修复与恢复：新 launcher 在注册时设置 `ExecutionTimeLimit=PT0S`，单次手动启动、IgnoreNew，不受默认 72 小时截止影响。恢复脚本支持中断后仍为 RUNNING 的运行继续；FAILED/SUCCESS 均跳过，DryRun 不移动 claim/锁，检查 runner 和训练进程防止重复。旧 `DDM4IP-BDD100K-SYNTH-Step1-Full-b16-cp-recovery-20260917` 已导出 XML 后禁用，防止未来登录重启旧失败目录。新登录恢复任务 `DDM4IP-BDD100K-SYNTH-Step1-Full-b16-async-recovery-20260918` 已注册，尚未实际触发；本轮未模拟断电，不能宣称断电恢复已端到端验证。恢复依赖该远端用户登录，最新检查点若损坏应另行诊断，不能改写 FAILED 历史来重试。
+- 新 external spec：`D:\DDM4IP-runtime\experiments\phaseE-step1-full-spec-20260918-b16-async.json`，SHA-256 `8F9E4513380D81D58ABAAB2657CC48E40E8FD55FCF3F811EA9CD104044277CDA`。prepare 生成的 reserved spec SHA-256 `1B963CF890AF8081FAF5F5D94DB4D94549A9D809952C0D4F6909A87C5C1A2F81`。benchmark summary/pairs/kernel 再次与冻结哈希匹配，resolved config 已独立解析；没有重建数据或扫描/改写 benchmark 像素。
+- 新运行根：`D:\DDM4IP-runtime\experiments\bdd100k-synthetic-motionblur-v1-step1-full-b16-async-20260918`；任务 `DDM4IP-BDD100K-SYNTH-Step1-Full-b16-async-20260918`。目录名保留 9 月 18 日冻结日期，实际于 **2026-09-19 08:01:08 +08:00** 通过 `start_bdd100k_synthetic_task.ps1` 启动，launcher/恢复任务注册退出码 0。真实 execute 使用 `<run_root>\spec.json`，没有 direct 运行训练模块。
+- 唯一启动后核查于 **2026-09-19 08:01:54 +08:00** 完成：scheduler Running、LastTaskResult 267009 (0x41301)、status RUNNING、PT0S；固定 Python 的 runner PID 22068 和训练 PID 11480 存在；spec/status/history/task.log/process-policy 存在，task.log 7921 字节且最后写入晚于启动时间。实际命令包含 batch16/accum8/max5242880/save16384，policy 记录 async/unbuffered/faulthandler。只确认启动，不等待训练完成、不持续轮询。
+- 核心修复哈希：`ddm4ip\trainers\base.py` = `9C4F7671C631ED6532950A667E92AAB74D57C762ED1E0A06E538B8160F4D0439`；stage wrapper = `CB6195A01A03FB1603B1631A79F3132C8CE1876A1B105D2B9426757C65E3D1B1`；launcher = `CA3A76708573EECDF6A6BCC6DF27FAA6B86BC5475299B6705A68B6100D4D3C77`；recovery wrapper = `45328E451B1FE8FB8387E29A12A2CFCB965E056B789F3F27CCD6B461DE92453C`。完整测试/修复哈希、原始备份、故障事件/WER、TensorBoard 摘要、RED/GREEN/35-test 日志、GPU 探针、resolved config、preflight、launch-verification.json 和启动日志快照见 `D:\DDM4IP-runtime\diagnostics\step1-crash-20260918`。旧失败 spec/status/history/task.log 保持原 SHA-256，所有旧运行目录原样保留。
+- 清理清单（均为本项目专用，当前保留）：上述 diagnostics 目录、新 external spec、新运行根、两个新任务（training/recovery）、修改的 `D:\DDM4IP-runtime\orchestration` 三个脚本，以及本机控制暂存目录 `D:\Unsupervised Imaging Inverse Problems\restart-diagnosis-20260918`。测试保留的精确临时目录见 diagnostics 下 `cleanup-inventory.json`，包含本轮 pycache 和测试日志；未新增依赖环境、权重或数据集，不删除公共缓存。旧失败运行根和旧任务 XML 属于证据，不清理；不执行批量删除。
+- 已完成范围为失败定位、工作方案实施、相关测试和本次 full 启动确认；**尚未完成**长期稳定性和 full 终态验收。用户可在组里电脑 PowerShell 运行下面命令，Ctrl+C 只停止日志跟随，不会停止训练。远端电脑需保持开机；本机与 SSH 可关闭，没有未完成传输。
+
+```powershell
+$run = 'D:\DDM4IP-runtime\experiments\bdd100k-synthetic-motionblur-v1-step1-full-b16-async-20260918'
+Get-Content -LiteralPath "$run\status.json" -Raw
+Get-ScheduledTask -TaskName 'DDM4IP-BDD100K-SYNTH-Step1-Full-b16-async-20260918' | Get-ScheduledTaskInfo
+Get-Content -LiteralPath "$run\task.log" -Tail 50 -Wait
+```
+
+- 下一准入：用户观察到 SUCCESS 或 FAILED 后，在新对话明确授权只读独立验收。必须交叉核对任务/进程、status、按完整 JSON 对象边界解析的 history、完整日志、冻结配置，以及最终 `training-state-5242880.pt`/`network-snapshot-5242880.pkl` 的 SHA-256、内部 5242880/5242881、flow_nn 模型键与全量张量有限性。失败时保留证据，先诊断；Step 2、Step 3、正式评估和新的数据处理仍未授权。可复制提示词：“请按 AGENTS.md 完成完整启动核验，读取远端最新 WORKLOG 和批准文档；本次只独立验收 step1-full-b16-async-20260918 的终态、日志、预算和终点检查点。如失败先诊断并报告，不自动重启，不启动 Step 2/3。”
+
+## 2026-09-19：全项目系统性代码审查与隔离修复完成，尚未部署
+
+- 授权范围：全项目代码审查、必要的隔离修复和无训练 CPU 验证；不停止/重启现有训练，不占用 GPU，不改变预算，不启动 Step2/3、正式评估、数据重处理或新的计划任务。完整启动核验及批准设计/计划、b16 fallback amendment/plan、canonical plan 已读。本机 WORKLOG 较旧，仅作为辅助上下文，未更新。
+- 唯一训练状态观察：`DDM4IP-BDD100K-SYNTH-Step1-Full-b16-async-20260918` 在本轮开始时为 Running，LastTaskResult=267009，wrapper/runner/train PID=23936/22068/11480；日志观察到 step16384/32768 保存。实际 batch16、accum8、max5242880、report/save16384、plot131072，async/unbuffered/faulthandler。此观察不代表终态；没有再次轮询或干预训练。
+- 审查独占根：`D:\DDM4IP-runtime\code-audit\20260919-systematic`。baseline/candidate 分别包含194个仓库文本/源码/配置文件和9个实际 `D:\DDM4IP-runtime\orchestration` 文件，未复制 .git、数据、权重或训练检查点。所有实现修复只在 candidate；当前运行的原仓库和部署脚本没有应用补丁。
+- 完成27类有失败证据支持的问题修复：P1=20、P2=7。主要包括终点恢复超预算、非整批预算、异常后仍更新参数、AMP跳步推进scheduler、检查点半写、Step2 seed未注入、无效配对验证override、Downsampling与DirectKernel固定版本构造崩溃、核几何/PSF轴序、非有限预测被clamp掩盖、claim竞态、缺失训练postflight、吞数据加载异常、丢分块核、忽略PNG失败、汇总身份/核种子追溯、图像缓存无限增长、EMA恢复截断以及遗留CLI。每项准确行号、触发条件、影响、证据和最小修复见 `audit-report.md`、`issues.csv/json`。
+- 最终新鲜验收：`E:\Anaconda3\envs\ddm4ip\python.exe <audit-root>\run_cpu_audit.py ALL`，114项中109 PASS、5 GPU专属 SKIP、0 FAIL，25.352秒，退出码0；`IMPORT_ISOLATION_OK=79`。证据 `evidence\suite-acceptance.log` SHA-256=`6FDB8B500D88170AA859E5816C7E08A82AF0669AEE20C45ACF51D69E5F5C15FC`。所有失败/中间证据均保留；CPU标量optimizer夹具和无优化训练循环不属于学习产物训练。
+- 四个独立 `python -m ddm4ip.main ... --cfg job --resolve` 配置进程退出0，五个部署PowerShell文件解析错误0；90个既有和6个新增Python文件AST解析通过。配置解析、导入或CPU夹具均不替代实际GPU入口验收。遗留Restormer导入测试使用natsort/joblib替身，当前环境缺joblib；未安装依赖或运行该预处理。
+- 保护核验：文档闭环前全部203个原始文件SHA-256与审查启动清单一致；Git索引哈希保持 `2EE2DB58AFFB1845A516B7E2B86F09DBFF1FC4C27A81ED84AE7BFB8F888CC276`。证据 `preservation-before-docs.json`。本次唯一原仓库写入为本WORKLOG与canonical plan；本机AGENTS追加长期规则。未提交、推送或执行其它Git写操作。
+- 交付：`audit-report.md` SHA-256=`37E4C2EE3F9A7D124B38CA70917CB0B63FB03AFE5EDE748D27148787BFA47C77`；`deployment-manifest.json` SHA-256=`3317AA99623185C3E51B3DDABD959683168400A81BBA88B3354677C97775B729`；`candidate.patch` SHA-256=`7A05391DA307F1E4F3AD19A95D2CAFE300D3B4060577AE86632DB1A14A1AA97D`。26个待部署文件为19个产品/运行器文件和7个测试文件，完整原/新哈希及精确候选和目标路径见部署清单。包含仓库外 `orchestration\bdd100k_runner.py`，不得遗漏或单独部署依赖该辅助模块的脚本。
+- 未解决/未覆盖：严格断点可复现性仍缺RNG、worker和PatchDataset游标恢复；Step2数据读取计数不能由global_step简单推断。CUDA/多卡/真实DPIR与LPIPS前向、断电恢复和原生崩溃根因未验证。checkpoint临时发布不是跨两文件事务；synthetic状态写入/注册失败故障窗口仍需专门夹具。核分析snapshot与各learned评估的冻结predecessor仍需跨工件绑定核验。未重新验收正式benchmark像素/角色，未证明组内不配对图可用全参考指标。
+- 清理清单：远端独占审查根及其baseline/candidate/temp/cache/evidence、报告、diff、配置与清单全部保留；当次统计2825文件、9544296字节，后续文档工件会增加。精确目录见 `cleanup-inventory.json`。本机辅助文本脚本和交付副本独占目录 `D:\DDM4IP-local-runtime\code-audit-20260919`；不安装本机或远端新环境/包，不复制数据/权重，不清理公用缓存，不执行递归或批量删除。
+- 下一阶段准入：用户观察当前full终态后，必须在新对话单独授权只读独立验收。检查scheduler/匹配进程、status、按完整JSON对象边界解析的history、完整task.log、冻结配置及最终 `.pt/.pkl` SHA、内部5242880/5242881、flow键和全量张量有限性。审查修复不得自动部署；须先确认训练已结束且不再依赖旧runner恢复，再单独授权部署并逐项CAS比较live当前SHA与清单baselineSHA。不一致时停止覆盖、保留并发修改。新runner会改变旧reserved spec的runner_sha256契约，必须按新授权冻结新spec，禁止修改旧证据配合新代码。Step2/3、正式评估和数据处理仍需各自新对话明确确认。
+
+可复制的新对话提示：
+
+> 请按 AGENTS.md 完成完整启动核验，完整读取最新 WORKLOG、批准设计/计划、b16 fallback 文档、canonical plan，以及 D:\DDM4IP-runtime\code-audit\20260919-systematic\audit-report.md。本次只授权对 step1-full-b16-async-20260918 做新的独立终态验收，并核对审查包部署前条件；不停止或重启训练，不部署补丁，不启动Step2/3。请逐项核验任务/进程、完整状态历史、task.log、冻结配置及终点checkpoint的SHA、内部5242880/5242881、flow键和全量有限性。未结束或验收失败时保留证据并报告。
+
+
+### 2026-09-19：按用户要求结束本轮并交接后续工作
+
+用户要求将后续工作整理成文档，在新对话继续。本轮不再扩展代码修复，也不重复检查训练状态。完整交接位于 `D:\DDM4IP-runtime\code-audit\20260919-systematic\NEXT_SESSION.md`，本机交付副本位于 `D:\DDM4IP-local-runtime\code-audit-20260919\NEXT_SESSION.md`。两份文件已独立核验 SHA-256 一致：`C4AAE18A39BC000C46328F7B5CB5DF8C108D8DF81990930652A62689C4792709`。
+
+交接包含：已完成的隔离修复及证据、剩余问题优先级、测试路径可迁移性、恢复语义限制、独立 full 终态验收条件、部署与 GPU 验证阶段门，以及两段可直接复制的新对话提示词。修复仍未部署；下一轮不得把本轮历史训练状态当成当前状态，不得自动启动后续训练、评估、数据处理或部署。
+
+## 2026-09-19—20：交接第 4 节剩余隔离审查闭环（candidate-only）
+
+- [x] 完整启动核验及指定材料阅读完成；远端 WORKLOG 为事实源，本机日志较旧且未更新。唯一训练新鲜快照为 18:19 +08:00 的 Running / `LastTaskResult=267009` / `status=RUNNING`，最近 checkpoint step 1327104；其后未轮询、停止或重启训练。
+- [x] candidate 修改前冻结为 209 文件、聚合 SHA-256 `42F265FB5AC25DB9571310A40F12E75591D4FCBA5894FC1821B609D86229B646`；修改后为 210 文件、聚合 SHA-256 `9F0A12A69CE6723EC6C3D0849F899FC48E2B91205A4BB3E4E70158DAD47606C5`，本轮新增/修改 15 文件。baseline、旧 candidate、旧补丁/报告/证据均保留。
+- [x] synthetic 状态写入已在 candidate 改为 history 追加+fsync、`status.json` 临时文件+fsync+原子 replace，终态单调；替换失败夹具证明旧 JSON 完整、history 与临时证据可审计。launcher 的 Register/Start 异常均进入 `dispatch-failed` 并写 reserved run 的 log/history/status；PowerShell mock 夹具不触碰真实计划任务。
+- [x] 新 checkpoint 采用 pending/commit marker 协议；无 commit 的 pending 使恢复 fail closed，损坏最高 commit 不得回退旧 checkpoint；历史双文件 pair 保持兼容。验证 iterator 回传已修复。
+- [x] learned evaluation 的逐图记录/summary 与核分析结果通过同一冻结 Step 2 snapshot SHA-256 绑定，并继续核对 seed 与真核 SHA；错误 checkpoint/seed/source 夹具均拒绝。外部 orchestration 测试只接受 `DDM4IP_TEST_ORCHESTRATION` 显式路径注入。
+- [x] 最终隔离 CPU 验收：123 项运行、5 项 CUDA 条件跳过、0 fail、退出码 0，`IMPORT_ISOLATION_OK 80`；`final-all.log` SHA-256 `F7604988876E9E678A832D73BB39F86A3409DDB5279FE1F13810049FEB14EDCC`。没有 GPU、网络、依赖安装、计划任务或 live 执行。
+- [x] 本轮交付根为 `D:\DDM4IP-runtime\code-audit\20260919-systematic\evidence\session4-20260919`。逐文件清单 SHA-256 `A4AE63B1930E17781C7E1BCC19A353D8D1E3454B4FCDF726C60EF8B13CD4A4A5`；累计补丁 `8551165EC52E5C8ECEB5C1DBAEA26EEDEA3F24C138985C46740EB90060B9EC9D`；测试汇总 `063BB3590C829408F26C0E4F106B9AD11C84320844249466FFC569C25FAACFB2`；补充报告 `677A3BA707F934AF1262BA5B7EFAD9FE963526F3FB176A24ECB724F5035D5CBA`。旧 `candidate.patch` 未覆盖。
+- [x] live 保护复核：除开始前已知的 WORKLOG/canonical 文档更新外，原保护清单其余 201 个 live 源码、配置和部署运行器 SHA-256 不变；Git index 仍为 `2EE2DB58AFFB1845A516B7E2B86F09DBFF1FC4C27A81ED84AE7BFB8F888CC276`。本轮只更新两份项目文档，未执行 `git add/commit/push/pull/checkout/reset`，未改变 index/ref/worktree。结束核验时误调用一次 `git write-tree`，可能物化不可达 tree object；发现后未再执行 Git 写命令，也未尝试清理对象。本项为对“不得做 Git 写操作”边界的如实偏差记录，不影响候选补丁、live 文件或索引内容。
+- [ ] exact resume 仍未完成。CPU 证据只证明 sampler cursor 可重建，重新设 seed 不能恢复 Python/NumPy/Torch 随机流；多 worker/persistent worker/prefetch 状态仍缺。方案文件 SHA-256 `08AB79948A1462A33EDA5064383D093F8B37FAA566C18ECEE17632947A764E11`；实施前必须单独评审采样协议与预算影响并取得新授权。
+- [ ] candidate 仍未部署，未做 GPU、真实跨阶段加载或 live 计划任务验证。先在新对话独立验收当前 Step 1 full 终态；部署、RNG exact-resume、GPU 回归、Step 2/3、正式评估和数据处理继续各自需要明确授权。
+
+
+## 2026-09-22: Task 12 Step 2 seed0 rerun3 terminal acceptance closure
+
+- [x] New rerun3 run root/task were independently accepted without rerun, stop, or old-root reuse.
+- [x] Scheduler/process/status/history/task.log passed: Ready, LastTaskResult=0, no matching process, SUCCESS/0, RESERVED -> RUNNING -> SUCCESS, complete log with no suspicious/nonfinite lines.
+- [x] Command/spec and fixed budget passed: batch_size=32, n_accum_steps=1, max_steps=2048, max_val_batches=0, report_every_steps=128, save_every_steps=512, num_workers=0, seed=0; no kernel_gt in command or resolved config; spec kernel_gt is provenance metadata only.
+- [x] Endpoint hashes, internal global_step=2048/2049, exact flow_nn/kernel_nn, all tensor/optimizer finiteness, no temporary checkpoint files, and sys.path restoration passed.
+- [ ] Step 2 full, other seeds, Step 3, and formal evaluation remain unauthorized and require a new conversation with explicit scope.
