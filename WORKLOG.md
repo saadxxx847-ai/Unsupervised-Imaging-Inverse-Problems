@@ -56,6 +56,16 @@
 - 未启动 Step 1 full、Step 2、Step 3 或正式评估；未下载权重、修改代码、修改 benchmark 或删除历史证据。b32 终态必须在用户新对话中重新授权后独立核对 scheduler、进程、status/history、完整 task.log、终点 checkpoint pair、SHA-256、内部 `N/N+1`、`flow_nn`、全量张量有限性和显存门；b32 通过后 Step 1 full 仍需另一个新对话单独授权。
 # 工作日志
 
+## 2026-09-22：当前 BDD100K / Step 2 源码已更新到个人 GitHub 仓库
+
+- 用户明确授权把当前代码更新到此前已使用的个人仓库；目标已由本机 GitHub 账户与历史发布记录双重确认，为 `https://github.com/saadxxx847-ai/Unsupervised-Imaging-Inverse-Problems` 的 `main`，不是作者官方 `inria-thoth/ddm4ip` 仓库。
+- 本轮先完成启动核验：本机控制日志与远端 `WORKLOG.md` 的 SHA-256 均为 `7DF8EFA272326D23198DD637C4A44FD4633C2641834799EF711DAFE966F832BE`；`group-pc` 主机名为 `DESKTOP-KBM1345`；远端仓库仍在 `main`/上游基线 `7804d02`，原有 dirty worktree 与 index 全部保留，未在公用组机配置 GitHub 凭据、提交、拉取、切换分支或推送。
+- 按 2026-09-17 已验证的隔离发布流程，在远端 `D:\DDM4IP-runtime\transfer\github-source-update-20260922-v2` 冻结 202 个仓库源文件和 10 个外部 orchestration 源文件；明确排除两个 `.orig` 备份，以及数据集、生成 benchmark 像素、预训练权重、checkpoint、实验输出、缓存、原始运行日志和凭据。源 archive SHA-256=`5D8F2F8C2CC00E2E5B5A6CB36E0E81BD80F43167F27356C5C7B6E76A2D5BE7A9`，orchestration archive SHA-256=`548437EFE1C651D61463442D4E7EA2BAC745398A604D7BFEDDADACB544289698`；对应 manifest SHA-256=`3014082211614964BC62C3093070B36D6E6FD00D4B0CDDBF5B17E1D504E8BF80` / `D237A52A71BD420CAA47B41D7EF01D9DFE364D725CD2D5FDAB8E5FB4FF4415BF`。下载后逐文件大小与 SHA-256 全部复核通过。
+- 相对 2026-09-17 发布版本，本轮源树新增 5 个文件、修改 24 个文件、删除 0 个；orchestration 新增 `step1_resume_watchdog.ps1` 与只读 `watch_bdd100k_step2_full.ps1`，并更新 3 个 synthetic runner/wrapper 文件。远端定向 CPU 回归共 44 项，`Ran 44 tests`、`OK`、退出码 0；日志 SHA-256=`B2675A116815A55B9A24080F6DD31115D9F7C2D872AC7C0B25211E2CC1DBA701`。敏感信息模式扫描为 0 命中，待提交路径中没有权重/数据/归档/`.orig`。已知的 `git diff --check` 输出仅为 `scripts/restormer/generate_patches.py` 中 13 处既有行尾空格；为保持远端源码字节冻结未在发布副本单独改写，未造成上述测试失败。
+- 本机隔离发布仓库从既有 GitHub `main` 提交 `686e12f` 快进生成并推送提交 `a5a90a0fe963f783f7e17ffdcec80874d05e7fac`（tree=`4fb63c4a42321eb6a1571cab66bd828fa7d87f5e`，提交说明 `Update BDD100K Step 2 source and recovery tooling`）。推送后 GitHub API 独立核验 `refs/heads/main` 命中该提交、recursive tree 未截断，本地/GitHub 均为 218 个 blob 且逐路径 Git blob SHA 全部一致，`git fsck --full` 退出 0，本机发布仓库干净。
+- 本次发布没有停止、重启或修改任何训练任务，也没有检查或宣称 seed0 终态；没有创建 seed1–seed4、Step 3、正式评估或数据处理任务。GitHub 源码更新不改变 Task 12 阶段门禁：seed0 自然结束后仍须在新对话独立验收 scheduler/process/status/status-history/task.log、固定预算、checkpoint SHA-256、内部 `1054720/1054721`、精确 `flow_nn/kernel_nn`、全量 tensor/optimizer 有限性、无临时 checkpoint 和 `sys.path` 恢复，通过后才可另行授权后续 seed。
+- 清理清单增量：远端失败但未覆盖的空冻结根 `D:\DDM4IP-runtime\transfer\github-source-update-20260922`；成功冻结/验证根 `D:\DDM4IP-runtime\transfer\github-source-update-20260922-v2`；本机隔离更新证据根 `D:\Unsupervised Imaging Inverse Problems\github-publication-update-20260922`；继续复用的个人发布仓库 `D:\Unsupervised Imaging Inverse Problems\github-publication-20260917\repository`。定向测试另保留六个项目专用夹具根：`D:\DDM4IP-runtime\temp\base-frequent-checkpoint-fi8zzarg`、`base-final-checkpoint-wtm_p4b6`、`step2-nonleaf-filter-jvrh950v`、`step1-recovery-safety-xfqezbmr`、`step1-recovery-safety-b8exhero`、`step1-recovery-safety-_omw1gsc`。这些路径当前均保留，不执行递归删除。
+
 ## 2026-09-10：Task 11 Step 1 b16 独立终态验收通过
 
 ### 新鲜只读交叉核验
